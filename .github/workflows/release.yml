@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (for example, v1.1.1)"
+        description: "Release tag (for example, v1.2.0)"
         required: true
         type: string
 
@@ -43,7 +43,7 @@ jobs:
 
           tag="${RELEASE_TAG}"
           if [[ -z "$tag" ]]; then
-            echo "::error::No release tag. Pass a tag such as v1.1.1."
+            echo "::error::No release tag. Pass a tag such as v1.2.0."
             exit 1
           fi
 

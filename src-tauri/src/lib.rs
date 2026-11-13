@@ -6,6 +6,7 @@ mod paste;
 mod popup;
 mod settings;
 mod tray;
+mod updater;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -24,6 +25,8 @@ pub struct AppState {
     /// Window that had focus before the popup opened, used to restore focus for auto-paste.
     #[cfg(target_os = "linux")]
     pub previous_x11_window: Mutex<Option<u32>>,
+    /// Latest release found by the startup update check.
+    pub available_update: Mutex<Option<updater::UpdateInfo>>,
 }
 
 /// Returns true when the argument requests showing the popup at startup.
@@ -159,6 +162,7 @@ pub fn run() {
                 popup_was_focused: AtomicBool::new(false),
                 #[cfg(target_os = "linux")]
                 previous_x11_window: Mutex::new(None),
+                available_update: Mutex::new(None),
             });
 
             // Configure the popup before its first map so GTK/WM focus-on-map is active even
@@ -212,6 +216,10 @@ pub fn run() {
             }
 
             clipboard_watcher::spawn(handle.clone());
+
+            // Check GitHub for a newer release without delaying startup. The result is stored
+            // in AppState and emitted to the Settings window when it arrives.
+            updater::spawn_check(handle.clone());
 
             // Existing image entries may predate previews or carry the old, larger thumbnails.
             // Regenerate them in the background so the popup list can show small previews
@@ -293,6 +301,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_entries,
             commands::get_app_info,
+            commands::get_update,
+            commands::open_external_url,
             commands::get_settings,
             commands::get_stats,
             commands::save_settings,

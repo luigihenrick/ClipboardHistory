@@ -44,10 +44,76 @@ fn should_request_focus(was_focused: bool, focused: bool, attempt: u32) -> bool 
 }
 
 fn center_popup(window: &tauri::WebviewWindow) {
-    if let Err(error) = window.center() {
+    let monitor = window
+        .cursor_position()
+        .ok()
+        .and_then(|cursor| window.monitor_from_point(cursor.x, cursor.y).ok().flatten())
+        .or_else(|| window.current_monitor().ok().flatten())
+        .or_else(|| window.primary_monitor().ok().flatten());
+
+    let Some(monitor) = monitor else {
+        if let Err(error) = window.center() {
+            #[cfg(debug_assertions)]
+            eprintln!("cliphistory: failed to center popup: {error}");
+        }
+        return;
+    };
+
+    let area = monitor.work_area();
+    let size = window
+        .outer_size()
+        .or_else(|_| window.inner_size())
+        .ok()
+        .filter(|size| size.width > 0 && size.height > 0)
+        .unwrap_or(tauri::PhysicalSize::new(440, 560));
+
+    let (x, y) = centered_position(
+        area.position.x,
+        area.position.y,
+        area.size.width,
+        area.size.height,
+        size.width,
+        size.height,
+    );
+
+    if let Err(error) = window.set_position(tauri::PhysicalPosition::new(x, y)) {
         #[cfg(debug_assertions)]
         eprintln!("cliphistory: failed to center popup: {error}");
     }
+}
+
+/// Calculates the top-left position that centers a window inside a monitor's work area.
+fn centered_position(
+    area_x: i32,
+    area_y: i32,
+    area_width: u32,
+    area_height: u32,
+    window_width: u32,
+    window_height: u32,
+) -> (i32, i32) {
+    let x = area_x + (area_width.saturating_sub(window_width) / 2) as i32;
+    let y = area_y + (area_height.saturating_sub(window_height) / 2) as i32;
+    (x, y)
+}
+
+/// Window managers can override the position while mapping the window. Re-apply the center
+/// once after the first frame so the first popup is not placed off-center by the WM.
+fn schedule_center_retry(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        // Give the WM time to map/place the window, then correct it again if needed.
+        for delay in [120_u64, 220] {
+            std::thread::sleep(Duration::from_millis(delay));
+            let app_for_main = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                if let Some(window) = app_for_main.get_webview_window("popup") {
+                    if window.is_visible().unwrap_or(false) {
+                        center_popup(&window);
+                    }
+                }
+            });
+        }
+    });
 }
 
 /// Last-resort focus fallback for X11/XWayland window managers that ignore GTK's `present()`.
@@ -350,6 +416,11 @@ pub fn show(app: &AppHandle) {
         eprintln!("cliphistory: failed to show popup: {error}");
     }
 
+    // The window manager may place the window while mapping it; center once more and verify
+    // again shortly after the first frame.
+    center_popup(&window);
+    schedule_center_retry(app);
+
     focus_popup(app, &window);
     spawn_focus_monitor(app.clone());
 }
@@ -398,9 +469,35 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::{
-        should_hide_on_blur, should_request_focus, should_retry_focus, BLUR_GRACE,
-        FOCUS_CHECK_INTERVAL, FOCUS_GIVE_UP_TICKS,
+        centered_position, should_hide_on_blur, should_request_focus, should_retry_focus,
+        BLUR_GRACE, FOCUS_CHECK_INTERVAL, FOCUS_GIVE_UP_TICKS,
     };
+
+    #[test]
+    fn centers_window_in_the_primary_monitor() {
+        assert_eq!(centered_position(0, 0, 1920, 1080, 440, 560), (740, 260));
+    }
+
+    #[test]
+    fn centers_window_on_an_offset_monitor() {
+        assert_eq!(
+            centered_position(1920, 0, 2560, 1440, 440, 560),
+            (2980, 440)
+        );
+    }
+
+    #[test]
+    fn centers_window_on_a_negative_origin_monitor() {
+        assert_eq!(
+            centered_position(-1920, -100, 2560, 1440, 440, 560),
+            (-860, 340)
+        );
+    }
+
+    #[test]
+    fn keeps_the_window_origin_when_it_is_larger_than_the_work_area() {
+        assert_eq!(centered_position(100, 50, 300, 200, 440, 560), (100, 50));
+    }
 
     #[test]
     fn ignores_blur_while_the_grace_period_is_active() {

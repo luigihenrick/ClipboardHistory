@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { AppInfo, Entry, Settings, Stats } from "../types";
+import type { AppInfo, Entry, Settings, Stats, UpdateInfo } from "../types";
 import { isTauri } from "./events";
 import * as mock from "./mock";
 
@@ -35,6 +35,29 @@ export function getAppInfo() {
       executable: "/caminho/para/cliphistory",
     }),
   );
+}
+
+export function getUpdate() {
+  return call<UpdateInfo | null>("get_update", {}, async () => {
+    // In the browser preview, `?update=1` shows the update card for layout testing.
+    if (new URLSearchParams(window.location.search).has("update")) {
+      return {
+        version: "v1.2.0",
+        name: "ClipHistory 1.2.0",
+        notes:
+          "### What's new\n\n- Image previews in the clipboard list\n- More reliable auto-paste\n- Faster popup opening\n\n[MIT License](https://github.com/luigihenrick/ClipboardHistory/blob/main/LICENSE)",
+        url: "https://github.com/luigihenrick/ClipboardHistory/releases/tag/v1.2.0",
+      };
+    }
+
+    return null;
+  });
+}
+
+export function openExternal(url: string) {
+  return call<void>("open_external_url", { url }, async () => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  });
 }
 
 export function getSettings() {

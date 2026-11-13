@@ -3,7 +3,7 @@
 # ClipHistory
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=tests&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?event=push&label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
 [![Latest version](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=latest&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-000000.svg)](LICENSE)
 
@@ -11,8 +11,8 @@ Clipboard history for **Windows, Linux and macOS**, built with
 [Tauri 2](https://tauri.app) + React + TypeScript.
 
 Copy anything in any app and get it back with a global shortcut: a popup shows the latest
-items, with search, pinned items and image support. Everything is stored locally in SQLite —
-nothing leaves your computer.
+items, with search, pinned items and image support. Everything is stored locally in SQLite. The
+only network request is the update check against GitHub; clipboard data is never sent.
 
 ## Features
 
@@ -22,11 +22,16 @@ nothing leaves your computer.
 - **Configurable global shortcut** (default `Ctrl+Shift+V` / `⌘ ⇧ V`), working while the app
   runs in the background.
 - **Fast popup** with instant search, keyboard navigation and copy on `Enter`.
-- **Pinned items** that survive clearing the history and retention limits.
+- **Centered popup** on the work area of the monitor under the cursor.
+- **Pinned items** that survive clearing the history and retention limits. They show an
+  always-visible pin icon and follow the normal recency order, moving to the top when copied like
+  any other item.
 - **Configurable limit** for unpinned items (10 to 500).
 - **Launch at login** (autostart) configurable.
 - **Tray icon** with access to the history, settings and quit.
 - **Single instance**: launching the app again just shows the popup.
+- **Update check**: at startup, checks GitHub for a newer release and shows the version and
+  release notes in Settings, with a button to open the GitHub release.
 - English and Portuguese (pt-BR) interface — English is the default — light/dark theme that
   follows the system, and frameless window.
 
@@ -176,10 +181,10 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 ```
 
 The suite covers the translation dictionaries (key/placeholder parity), date formatting, shortcut
-parsing/formatting, the focus-retry policy, blur/hide decisions, `--toggle` routing, the popup
-window configuration (`focus`, `center`, `visible`) and the release/version configuration. CI
-also compiles the project, which is what prevents regressions such as a `'static` closure
-lifetime error from reaching a build.
+parsing/formatting, the focus-retry policy, blur/hide decisions, `--toggle` routing, popup
+centering, update version/URL validation, the popup window configuration (`focus`, `center`,
+`visible`) and the release/version configuration. CI also compiles the project, which is what
+prevents regressions such as a `'static` closure lifetime error from reaching a build.
 
 ### Releasing
 
@@ -193,8 +198,8 @@ To release a version:
 
    ```bash
    git add -A
-   git commit -m "Release v1.1.1"
-   git tag v1.1.1
+   git commit -m "Release v1.2.0"
+   git tag v1.2.0
    git push origin main --tags
    ```
 
@@ -368,8 +373,8 @@ Everything is local, in the app data directory defined by the
 The database is `cliphistory.db`; images live in `images/`.
 
 > **Privacy:** the history is stored in plain text on your disk. Avoid copying passwords and
-> sensitive data, or clear the history afterwards. There is no sync and nothing is sent to the
-> cloud.
+> sensitive data, or clear the history afterwards. There is no sync and clipboard data is never
+> sent anywhere. The only network request is the startup update check against GitHub.
 
 ## Shortcuts and platform notes
 

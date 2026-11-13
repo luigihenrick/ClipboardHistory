@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 
 import { HotkeyRecorder } from "../components/HotkeyRecorder";
@@ -6,9 +6,12 @@ import { CheckIcon, CloseIcon, KeyboardIcon, Logo, WarningIcon } from "../compon
 import { useI18n, type Language } from "../i18n";
 import { localizeError } from "../i18n/errors";
 import { isLanguage } from "../i18n/types";
+import { onEvent } from "../lib/events";
 import * as api from "../lib/ipc";
 import { isMac } from "../lib/shortcut";
-import type { AppInfo, Settings as SettingsModel, Stats } from "../types";
+import type { AppInfo, Settings as SettingsModel, Stats, UpdateInfo } from "../types";
+
+const Markdown = lazy(() => import("react-markdown"));
 
 const isLinux = typeof navigator !== "undefined" && /Linux/.test(navigator.userAgent);
 
@@ -25,6 +28,7 @@ export default function Settings() {
   const [clearing, setClearing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const [version, setVersion] = useState("");
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
 
   const loadStats = useCallback(async () => {
     try {
@@ -84,6 +88,33 @@ export default function Settings() {
       disposed = true;
     };
   }, [applyLanguage]);
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    void api
+      .getUpdate()
+      .then((available) => {
+        if (!disposed) setUpdateInfo(available);
+      })
+      .catch((error) => console.error("cliphistory: failed to check for updates", error));
+
+    void onEvent<UpdateInfo>("update://available", (payload) => {
+      setUpdateInfo(payload);
+    }).then((fn) => {
+      if (disposed) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
 
   const update = (patch: Partial<SettingsModel>) => {
     setStatus(null);
@@ -244,6 +275,54 @@ export default function Settings() {
       </header>
 
       <div className="settings-content">
+        {updateInfo && (
+          <section className="card update-card">
+            <div className="update-heading">
+              <div>
+                <h2>{t("settings.updateTitle")}</h2>
+                <p className="card-description">{t("settings.updateText")}</p>
+              </div>
+              <span className="update-version">{updateInfo.version}</span>
+            </div>
+
+            {updateInfo.notes && (
+              <Suspense fallback={<pre className="update-notes">{updateInfo.notes}</pre>}>
+                <div className="update-notes">
+                  <Markdown
+                    components={{
+                      a: ({ href, children }) => (
+                        <a
+                          href={href}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            if (href?.startsWith("https://")) {
+                              void api.openExternal(href);
+                            }
+                          }}
+                        >
+                          {children}
+                        </a>
+                      ),
+                    }}
+                  >
+                    {updateInfo.notes}
+                  </Markdown>
+                </div>
+              </Suspense>
+            )}
+
+            <div className="update-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void api.openExternal(updateInfo.url)}
+              >
+                {t("settings.updateOpen")}
+              </button>
+            </div>
+          </section>
+        )}
+
         <section className="card">
           <div className="card-heading">
             <KeyboardIcon />
@@ -454,7 +533,7 @@ export default function Settings() {
 
         <div className="footer-spacer" />
 
-        <span className="version">v{version || "1.1.1"} · Tauri 2</span>
+        <span className="version">v{version || "1.2.0"} · Tauri 2</span>
         <button type="button" className="btn btn-quiet" onClick={() => void api.hideSettings()}>
           {t("common.close")}
         </button>

@@ -3,7 +3,7 @@
 # ClipHistory
 
 [![Testes](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=testes&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?event=push&label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
 [![Última versão](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=%C3%BAltima%20vers%C3%A3o&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-000000.svg)](LICENSE)
 
@@ -12,7 +12,8 @@ Histórico da área de transferência para **Windows, Linux e macOS**, feito com
 
 Copie qualquer coisa em qualquer aplicativo e recupere depois com um atalho global: um popup
 mostra os últimos itens, com busca, itens fixados e suporte a imagens. Tudo fica salvo
-localmente em SQLite — nada sai do seu computador.
+localmente em SQLite. A única requisição de rede é a verificação de atualizações no GitHub;
+dados da área de transferência nunca são enviados.
 
 ## Funcionalidades
 
@@ -22,11 +23,16 @@ localmente em SQLite — nada sai do seu computador.
 - **Atalho global configurável** (padrão `Ctrl+Shift+V` / `⌘ ⇧ V`), funcionando com o app em
   segundo plano.
 - **Popup rápido** com busca instantânea, navegação por teclado e cópia com `Enter`.
-- **Itens fixados** que não são removidos ao limpar o histórico nem ao atingir o limite.
+- **Popup centralizado** na área útil do monitor sob o cursor.
+- **Itens fixados** que não são removidos ao limpar o histórico nem ao atingir o limite. Eles
+  mostram um ícone de pin sempre visível, seguem a ordem normal de uso e vão para o topo quando
+  copiados, como qualquer outro item.
 - **Limite configurável** de itens não fixados (10 a 500).
 - **Iniciar com o sistema** (login/autostart) configurável.
 - **Ícone na bandeja** com acesso ao histórico, às configurações e à opção de sair.
 - **Instância única**: abrir o app de novo apenas mostra o popup.
+- **Verificação de atualizações**: no startup, consulta o GitHub por uma versão mais nova e
+  mostra a versão e as notas do release nas Configurações, com um botão para abrir o release.
 - Interface em inglês (padrão) e português; tema claro/escuro seguindo o sistema e janela sem
   moldura.
 
@@ -178,9 +184,10 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 
 A suíte cobre os dicionários de tradução (paridade de chaves/placeholders), formatação de datas,
 parsing/formatação de atalhos, a política de retentativa de foco, decisões de blur/foco, o
-roteamento de `--toggle`, a configuração da janela do popup (`focus`, `center`, `visible`) e a
-configuração de release/versão. O CI também compila o projeto, o que evita regressões como o
-erro de tempo de vida do closure no `setup`.
+roteamento de `--toggle`, centralização do popup, validação de versão/URL de atualização, a
+configuração da janela do popup (`focus`, `center`, `visible`) e a configuração de
+release/versão. O CI também compila o projeto, o que evita regressões como o erro de tempo de
+vida do closure no `setup`.
 
 ### Publicando uma release
 
@@ -194,8 +201,8 @@ Para publicar uma versão:
 
    ```bash
    git add -A
-   git commit -m "Release v1.1.1"
-   git tag v1.1.1
+   git commit -m "Release v1.2.0"
+   git tag v1.2.0
    git push origin main --tags
    ```
 
@@ -371,7 +378,9 @@ Tudo é local, no diretório de dados do app definido pelo identificador
 O banco é `cliphistory.db`; as imagens ficam em `images/`.
 
 > **Privacidade:** o histórico é salvo em texto claro no seu disco. Evite copiar senhas e dados
-> sensíveis, ou limpe o histórico depois. Não há sincronização nem envio para a nuvem.
+> sensíveis, ou limpe o histórico depois. Não há sincronização e os dados da área de
+> transferência nunca são enviados. A única requisição de rede é a verificação de atualizações
+> no startup.
 
 ## Atalhos e detalhes de plataforma
 

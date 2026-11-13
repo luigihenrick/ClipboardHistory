@@ -129,10 +129,7 @@ let entries: Entry[] = [
 ];
 
 function sortEntries(): void {
-  entries.sort((a, b) => {
-    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-    return b.createdAt - a.createdAt;
-  });
+  entries.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 function emit(name: string, payload: unknown = null): void {
@@ -181,6 +178,7 @@ export async function shortcutStatus(): Promise<boolean> {
 export async function copyEntry(id: number): Promise<void> {
   const entry = entries.find((item) => item.id === id);
   if (entry) entry.createdAt = Date.now();
+  sortEntries();
   // In the preview there is no real popup or paste simulation.
   console.info(
     "[preview] copiado:",

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import {
   ClipboardIcon,
@@ -81,7 +81,14 @@ const EntryRow = memo(function EntryRow({
           {entry.pinned && (
             <>
               <span className="meta-sep">•</span>
-              <span className="pinned-label">{t("popup.pinnedBadge")}</span>
+              <span
+                className="pinned-icon"
+                role="img"
+                title={t("popup.pinnedBadge")}
+                aria-label={t("popup.pinnedBadge")}
+              >
+                <PinIcon size={13} filled />
+              </span>
             </>
           )}
         </div>
@@ -316,17 +323,6 @@ export default function Popup() {
     [refresh],
   );
 
-  const { pinned, recent } = useMemo(() => {
-    const pinnedItems: Array<{ entry: Entry; index: number }> = [];
-    const recentItems: Array<{ entry: Entry; index: number }> = [];
-
-    entries.forEach((entry, index) => {
-      (entry.pinned ? pinnedItems : recentItems).push({ entry, index });
-    });
-
-    return { pinned: pinnedItems, recent: recentItems };
-  }, [entries]);
-
   const total = entries.length;
 
   return (
@@ -423,45 +419,18 @@ export default function Popup() {
           </div>
         )}
 
-        {pinned.length > 0 && (
-          <div className="entry-group">
-            <div className="group-label">
-              <PinIcon size={11} filled /> {t("popup.pinnedSection")}
-            </div>
-            {pinned.map(({ entry, index }) => (
-              <EntryRow
-                key={entry.id}
-                entry={entry}
-                index={index}
-                selected={selected === index}
-                onHover={setSelected}
-                onCopy={copy}
-                onPin={handlePin}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        )}
-
-        {recent.length > 0 && (
-          <div className="entry-group">
-            {pinned.length > 0 && (
-              <div className="group-label">{t("popup.recentSection")}</div>
-            )}
-            {recent.map(({ entry, index }) => (
-              <EntryRow
-                key={entry.id}
-                entry={entry}
-                index={index}
-                selected={selected === index}
-                onHover={setSelected}
-                onCopy={copy}
-                onPin={handlePin}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        )}
+        {entries.map((entry, index) => (
+          <EntryRow
+            key={entry.id}
+            entry={entry}
+            index={index}
+            selected={selected === index}
+            onHover={setSelected}
+            onCopy={copy}
+            onPin={handlePin}
+            onDelete={handleDelete}
+          />
+        ))}
       </div>
 
       <footer className="popup-footer">

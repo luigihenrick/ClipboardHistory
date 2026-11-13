@@ -39,3 +39,10 @@ export interface AppInfo {
   /** Absolute path to the running executable. */
   executable: string;
 }
+
+export interface UpdateInfo {
+  version: string;
+  name: string;
+  notes: string;
+  url: string;
+}

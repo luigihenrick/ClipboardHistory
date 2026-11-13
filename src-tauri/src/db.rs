@@ -22,6 +22,10 @@ const THUMBNAIL_QUALITY: u8 = 72;
 /// Only images visible in the popup need previews; backfill recent ones at startup.
 const BACKFILL_LIMIT: usize = 100;
 
+/// All entries follow the normal most-recently-used order. Pinned entries are protected from
+/// deletion/pruning, but they are not forced to the top; copying any entry moves it to the top.
+const LIST_ORDER: &str = "ORDER BY last_used_at DESC, id DESC";
+
 /// What needs to be written back to the system clipboard for a given entry.
 pub enum CopyPayload {
     Text(String),
@@ -292,7 +296,7 @@ impl Db {
             Some(query) => {
                 let sql = format!(
                     "{base} WHERE content LIKE ?1 ESCAPE '\\'
-                     ORDER BY pinned DESC, last_used_at DESC, id DESC LIMIT {LIST_LIMIT}"
+                     {LIST_ORDER} LIMIT {LIST_LIMIT}"
                 );
                 let mut stmt = conn.prepare(&sql).map_err(db_err)?;
                 let rows = stmt
@@ -301,9 +305,7 @@ impl Db {
                 rows.collect::<rusqlite::Result<Vec<_>>>().map_err(db_err)?
             }
             None => {
-                let sql = format!(
-                    "{base} ORDER BY pinned DESC, last_used_at DESC, id DESC LIMIT {LIST_LIMIT}"
-                );
+                let sql = format!("{base} {LIST_ORDER} LIMIT {LIST_LIMIT}");
                 let mut stmt = conn.prepare(&sql).map_err(db_err)?;
                 let rows = stmt.query_map([], |row| map_entry(row)).map_err(db_err)?;
                 rows.collect::<rusqlite::Result<Vec<_>>>().map_err(db_err)?
@@ -564,4 +566,47 @@ fn write_png(path: &Path, rgba: &[u8], width: u32, height: u32) -> Result<(), St
     image::codecs::png::PngEncoder::new(writer)
         .write_image(rgba, width, height, image::ExtendedColorType::Rgba8)
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LIST_ORDER;
+    use rusqlite::Connection;
+
+    fn ordered_ids(conn: &Connection) -> Vec<i64> {
+        let mut stmt = conn
+            .prepare(&format!("SELECT id FROM entries {LIST_ORDER}"))
+            .unwrap();
+
+        stmt.query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .unwrap()
+    }
+
+    #[test]
+    fn pinned_entries_follow_the_normal_recency_order() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE entries (
+                 id           INTEGER PRIMARY KEY,
+                 pinned       INTEGER NOT NULL,
+                 created_at   INTEGER NOT NULL,
+                 last_used_at INTEGER NOT NULL
+             );
+             INSERT INTO entries VALUES (1, 1, 100, 100);
+             INSERT INTO entries VALUES (2, 1, 200, 50);
+             INSERT INTO entries VALUES (3, 0, 300, 500);
+             INSERT INTO entries VALUES (4, 0, 400, 400);",
+        )
+        .unwrap();
+
+        // Pinned items do not jump ahead of more recently used items.
+        assert_eq!(ordered_ids(&conn), vec![3, 4, 1, 2]);
+
+        // Copying a pinned item moves it to the top, just like any other item.
+        conn.execute("UPDATE entries SET last_used_at = 999 WHERE id = 1", [])
+            .unwrap();
+        assert_eq!(ordered_ids(&conn), vec![1, 3, 4, 2]);
+    }
 }

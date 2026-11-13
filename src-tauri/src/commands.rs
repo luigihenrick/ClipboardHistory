@@ -65,6 +65,31 @@ pub async fn get_app_info() -> Result<AppInfo, String> {
 }
 
 #[tauri::command]
+pub fn get_update(state: State<'_, AppState>) -> Option<crate::updater::UpdateInfo> {
+    state
+        .available_update
+        .lock()
+        .ok()
+        .and_then(|update| update.clone())
+}
+
+fn is_allowed_external_url(url: &str) -> bool {
+    url.starts_with("https://")
+        && !url
+            .chars()
+            .any(|character| character.is_whitespace() || character.is_control())
+}
+
+#[tauri::command]
+pub fn open_external_url(url: String) -> Result<(), String> {
+    if !is_allowed_external_url(&url) {
+        return Err("Only HTTPS links can be opened.".to_string());
+    }
+
+    open::that(url).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 pub async fn get_settings(state: State<'_, AppState>) -> Result<Settings, String> {
     state
         .settings
@@ -323,4 +348,25 @@ pub async fn open_settings(app: AppHandle) -> Result<(), String> {
 pub async fn hide_settings(app: AppHandle) -> Result<(), String> {
     popup::hide_settings(&app);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_allowed_external_url;
+
+    #[test]
+    fn allows_https_urls() {
+        assert!(is_allowed_external_url(
+            "https://github.com/luigihenrick/ClipboardHistory/releases/tag/v1.2.0"
+        ));
+    }
+
+    #[test]
+    fn rejects_non_https_or_unsafe_urls() {
+        assert!(!is_allowed_external_url("http://example.com"));
+        assert!(!is_allowed_external_url("file:///etc/passwd"));
+        assert!(!is_allowed_external_url("javascript:alert(1)"));
+        assert!(!is_allowed_external_url("https://example.com/\n--evil"));
+        assert!(!is_allowed_external_url(""));
+    }
 }
