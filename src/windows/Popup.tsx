@@ -49,6 +49,18 @@ const EntryRow = memo(function EntryRow({
       onMouseEnter={() => onHover(index)}
       onClick={() => onCopy(entry)}
     >
+      {entry.kind === "image" && entry.thumbnail && (
+        <div className="entry-thumb">
+          <img
+            src={entry.thumbnail}
+            alt=""
+            draggable={false}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      )}
+
       <div className="entry-body">
         {entry.kind === "image" ? (
           <p className="entry-preview entry-preview-image">{t("popup.image")}</p>

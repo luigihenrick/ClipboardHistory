@@ -112,6 +112,8 @@ pub struct Entry {
     pub kind: String,
     /// Text preview (may be truncated) or `None` for images.
     pub text: Option<String>,
+    /// Small JPEG preview as a data URL, for images only.
+    pub thumbnail: Option<String>,
     pub width: Option<u32>,
     pub height: Option<u32>,
     pub pinned: bool,

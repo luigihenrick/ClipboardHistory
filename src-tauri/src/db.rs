@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use tauri::{AppHandle, Manager};
 
@@ -14,6 +16,11 @@ use crate::models::{Entry, Stats};
 const LIST_LIMIT: usize = 100;
 /// Enough text for the two-line preview; the full clipboard text stays in SQLite.
 const PREVIEW_CHARS: usize = 300;
+/// Small enough to keep the popup payload light while remaining legible on HiDPI screens.
+const THUMBNAIL_MAX: u32 = 64;
+const THUMBNAIL_QUALITY: u8 = 72;
+/// Only images visible in the popup need previews; backfill recent ones at startup.
+const BACKFILL_LIMIT: usize = 100;
 
 /// What needs to be written back to the system clipboard for a given entry.
 pub enum CopyPayload {
@@ -184,6 +191,7 @@ impl Db {
             }
         }
 
+        let thumbnail = make_thumbnail(rgba, width, height)?;
         let file_name = format!("{}-{}.png", now, &hash[..hash.len().min(16)]);
         let file_path = self.images_dir.join(&file_name);
         write_png(&file_path, rgba, width, height)?;
@@ -193,9 +201,9 @@ impl Db {
 
         let insert = tx.execute(
             "INSERT INTO entries
-                (kind, content, image_path, img_w, img_h, hash, pinned, created_at, last_used_at)
-             VALUES ('image', NULL, ?1, ?2, ?3, ?4, 0, ?5, ?5)",
-            params![file_name, width, height, hash, now],
+                (kind, content, image_path, thumb, img_w, img_h, hash, pinned, created_at, last_used_at)
+             VALUES ('image', NULL, ?1, ?2, ?3, ?4, ?5, 0, ?6, ?6)",
+            params![file_name, thumbnail, width, height, hash, now],
         );
 
         if let Err(err) = insert {
@@ -210,6 +218,64 @@ impl Db {
         Ok(true)
     }
 
+    /// Generates previews for image entries that predate thumbnail support or whose stored
+    /// thumbnails are too large. Runs in the background at startup so it never blocks the UI.
+    pub fn backfill_thumbnails(&self) -> Result<usize, String> {
+        let rows: Vec<(i64, String)> = {
+            let conn = self.lock()?;
+            let mut stmt = conn
+                .prepare(
+                    "SELECT id, image_path FROM entries
+                     WHERE kind = 'image' AND image_path IS NOT NULL
+                       AND (
+                         thumb IS NULL
+                         OR substr(thumb, 1, 4) = X'89504E47'
+                         OR length(thumb) > 8192
+                       )
+                     ORDER BY last_used_at DESC, id DESC
+                     LIMIT ?1",
+                )
+                .map_err(db_err)?;
+
+            let collected = stmt
+                .query_map([BACKFILL_LIMIT as i64], |row| {
+                    Ok((row.get(0)?, row.get(1)?))
+                })
+                .map_err(db_err)?
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .map_err(db_err)?;
+
+            collected
+        };
+        let mut updated = 0;
+        for (id, file_name) in rows {
+            let file_path = self.images_dir.join(&file_name);
+            let Ok(bytes) = fs::read(&file_path) else {
+                continue;
+            };
+            let Ok(image) = image::load_from_memory_with_format(&bytes, image::ImageFormat::Png)
+            else {
+                continue;
+            };
+
+            let rgba = image.to_rgba8();
+            let (width, height) = rgba.dimensions();
+            let Ok(thumbnail) = make_thumbnail(rgba.as_raw(), width, height) else {
+                continue;
+            };
+
+            let conn = self.lock()?;
+            conn.execute(
+                "UPDATE entries SET thumb = ?1 WHERE id = ?2",
+                params![thumbnail, id],
+            )
+            .map_err(db_err)?;
+            updated += 1;
+        }
+
+        Ok(updated)
+    }
+
     /// Lists entries, newest first, with pinned entries on top.
     ///
     /// Text is truncated to a display-friendly preview; the full content stays in the database.
@@ -218,7 +284,7 @@ impl Db {
         let term = search.map(str::trim).filter(|value| !value.is_empty());
 
         let base = format!(
-            "SELECT id, kind, substr(content, 1, {PREVIEW_CHARS}), img_w, img_h, pinned, created_at
+            "SELECT id, kind, substr(content, 1, {PREVIEW_CHARS}), thumb, img_w, img_h, pinned, created_at
              FROM entries"
         );
 
@@ -401,18 +467,30 @@ fn like_pattern(query: &str) -> String {
 }
 
 fn map_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<Entry> {
-    let width: Option<i64> = row.get(3)?;
-    let height: Option<i64> = row.get(4)?;
+    let thumbnail: Option<Vec<u8>> = row.get(3)?;
+    let width: Option<i64> = row.get(4)?;
+    let height: Option<i64> = row.get(5)?;
 
     Ok(Entry {
         id: row.get(0)?,
         kind: row.get(1)?,
         text: row.get(2)?,
+        thumbnail: thumbnail.map(thumbnail_data_url),
         width: width.map(|value| value as u32),
         height: height.map(|value| value as u32),
-        pinned: row.get::<_, i64>(5)? != 0,
-        created_at: row.get(6)?,
+        pinned: row.get::<_, i64>(6)? != 0,
+        created_at: row.get(7)?,
     })
+}
+
+fn thumbnail_data_url(bytes: Vec<u8>) -> String {
+    let mime = if bytes.starts_with(&[0x89, b'P', b'N', b'G']) {
+        "image/png"
+    } else {
+        "image/jpeg"
+    };
+
+    format!("data:{mime};base64,{}", BASE64.encode(bytes))
 }
 
 /// Deletes unpinned entries beyond `max_items` (pinned entries always survive).
@@ -453,6 +531,31 @@ fn remove_files(images_dir: &Path, files: &[String]) {
     for file in files {
         let _ = fs::remove_file(images_dir.join(file));
     }
+}
+
+fn make_thumbnail(rgba: &[u8], width: u32, height: u32) -> Result<Vec<u8>, String> {
+    let source = image::RgbaImage::from_raw(width, height, rgba.to_vec())
+        .ok_or_else(|| "Invalid image.".to_string())?;
+
+    let longest = width.max(height).max(1);
+    let thumb_width = ((width as u64 * THUMBNAIL_MAX as u64) / longest as u64).max(1) as u32;
+    let thumb_height = ((height as u64 * THUMBNAIL_MAX as u64) / longest as u64).max(1) as u32;
+
+    let thumbnail = image::imageops::thumbnail(&source, thumb_width, thumb_height);
+    let rgb = image::DynamicImage::ImageRgba8(thumbnail).to_rgb8();
+    let mut buffer = Vec::new();
+    let mut encoder =
+        image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buffer, THUMBNAIL_QUALITY);
+    encoder
+        .encode(
+            rgb.as_raw(),
+            thumb_width,
+            thumb_height,
+            image::ExtendedColorType::Rgb8,
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(buffer)
 }
 
 fn write_png(path: &Path, rgba: &[u8], width: u32, height: u32) -> Result<(), String> {

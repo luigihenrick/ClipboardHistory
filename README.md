@@ -60,7 +60,7 @@ Pre-built installers for the latest version are on the
 | Auto paste      | `enigo` (simulates `Ctrl+V` / `⌘V`)                                         |
 | Autostart       | `tauri-plugin-autostart`                                                    |
 | Single instance | `tauri-plugin-single-instance`                                              |
-| Images          | `image` (PNG)                                                               |
+| Images          | `image` (PNG + small JPEG previews)                                        |
 
 ## How it works
 
@@ -69,8 +69,8 @@ Pre-built installers for the latest version are on the
   RGBA image.
 - Every item is identified by **SHA-256**. Copying the same content again does not create a
   duplicate: the existing item is moved to the top.
-- **Images** are stored as PNG in the app's data directory; the list shows lightweight metadata
-  instead of loading image thumbnails.
+- **Images** are stored as PNG in the app's data directory. A small JPEG preview (64 px) is kept
+  in SQLite for the list; previews for older images are generated in the background.
 - The popup and the settings window are separate Tauri windows. The global shortcut toggles the
   popup; losing focus hides it (configurable), and `Esc` also closes it.
 - With **auto paste** enabled, selecting an item hides the popup, returns focus to the previous
@@ -187,8 +187,8 @@ To release a version:
 
    ```bash
    git add -A
-   git commit -m "Release v1.0.1"
-   git tag v1.0.1
+   git commit -m "Release v1.1.0"
+   git tag v1.1.0
    git push origin main --tags
    ```
 

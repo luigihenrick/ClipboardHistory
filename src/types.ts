@@ -4,6 +4,7 @@ export interface Entry {
   id: number;
   kind: "text" | "image";
   text: string | null;
+  thumbnail: string | null;
   width: number | null;
   height: number | null;
   pinned: boolean;

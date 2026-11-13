@@ -61,7 +61,7 @@ Os instaladores prontos da versão mais recente ficam na página de
 | Auto paste      | `enigo` (simulação de `Ctrl+V` / `⌘V`)                                     |
 | Autostart       | `tauri-plugin-autostart`                                                   |
 | Instância única | `tauri-plugin-single-instance`                                             |
-| Imagens         | `image` (PNG)                                                              |
+| Imagens         | `image` (PNG + previews JPEG pequenos)                                     |
 
 ## Como funciona
 
@@ -70,8 +70,8 @@ Os instaladores prontos da versão mais recente ficam na página de
   texto, o conteúdo é lido como imagem RGBA.
 - Cada item é identificado por **SHA-256**. Copiar o mesmo conteúdo de novo não cria duplicata:
   o item existente é movido para o topo.
-- **Imagens** são gravadas como PNG no diretório de dados do app; a lista mostra apenas
-  metadados leves, sem carregar thumbnails.
+- **Imagens** são gravadas como PNG no diretório de dados do app. Um preview JPEG pequeno
+  (64 px) fica no SQLite para a lista; previews de imagens antigas são gerados em background.
 - O popup e a janela de configurações são janelas Tauri separadas. O atalho global alterna o
   popup; perder o foco esconde (configurável), e `Esc` também fecha.
 - Com **auto paste** ligado, ao escolher um item o popup se esconde, o foco volta ao aplicativo
@@ -188,8 +188,8 @@ Para publicar uma versão:
 
    ```bash
    git add -A
-   git commit -m "Release v1.0.1"
-   git tag v1.0.1
+   git commit -m "Release v1.1.0"
+   git tag v1.1.0
    git push origin main --tags
    ```
 

@@ -1,7 +1,9 @@
-## ClipHistory 1.0.1
+## ClipHistory 1.1.0
 
-### What's new in 1.0.1
+### What's new in 1.1.0
 
+- **Image previews in the list**: image entries now show a small 64 px JPEG preview; existing
+  images are backfilled in the background.
 - **More reliable popup focus** on Linux/X11/XWayland: focus-on-map is configured before the
   first show, GTK `present()` keeps retrying until the popup is focused, and an X11 fallback
   (`_NET_ACTIVE_WINDOW` + `XSetInputFocus`) forces focus when the window manager ignores the
@@ -54,8 +56,10 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 <details>
 <summary>Português (Brasil)</summary>
 
-### Novidades na 1.0.1
+### Novidades na 1.1.0
 
+- **Previews de imagens na lista**: entradas de imagem agora mostram um preview JPEG de 64 px;
+  imagens antigas são processadas em background.
 - **Foco mais confiável** no popup em Linux/X11/XWayland: o foco ao mapear é configurado antes
   da primeira exibição, o `present()` do GTK continua tentando até o popup focar, e um fallback
   X11 (`_NET_ACTIVE_WINDOW` + `XSetInputFocus`) força o foco quando o window manager ignora o

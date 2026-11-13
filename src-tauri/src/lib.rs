@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 
-use tauri::{Manager, WindowEvent};
+use tauri::{Emitter, Manager, WindowEvent};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 pub struct AppState {
@@ -207,6 +207,31 @@ pub fn run() {
             }
 
             clipboard_watcher::spawn(handle.clone());
+
+            // Existing image entries may predate previews or carry the old, larger thumbnails.
+            // Regenerate them in the background so the popup list can show small previews
+            // without delaying startup or the first open.
+            {
+                let backfill = handle.clone();
+                std::thread::spawn(move || {
+                    let Some(state) = backfill.try_state::<AppState>() else {
+                        return;
+                    };
+
+                    match state.db.backfill_thumbnails() {
+                        Ok(updated) if updated > 0 => {
+                            #[cfg(debug_assertions)]
+                            eprintln!("cliphistory: generated image previews: {updated}");
+
+                            let _ = backfill.emit("history://changed", ());
+                        }
+                        Ok(_) => {}
+                        Err(error) => {
+                            eprintln!("cliphistory: failed to generate image previews: {error}")
+                        }
+                    }
+                });
+            }
 
             if first_run {
                 // Persist defaults so the settings window only opens on the very first launch.

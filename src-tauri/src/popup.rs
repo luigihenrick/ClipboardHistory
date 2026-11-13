@@ -110,26 +110,24 @@ fn force_x11_focus(window: &tauri::WebviewWindow) {
 fn focus_popup(app: &AppHandle, window: &tauri::WebviewWindow) {
     #[cfg(target_os = "linux")]
     {
-        let app_handle = app.clone();
+        let window = window.clone();
         let _ = app.run_on_main_thread(move || {
             use gtk::prelude::GtkWindowExt;
 
-            if let Some(window) = app_handle.get_webview_window("popup") {
-                if !window.is_visible().unwrap_or(false) {
-                    return;
-                }
+            if !window.is_visible().unwrap_or(false) {
+                return;
+            }
 
-                match window.gtk_window() {
-                    Ok(gtk_window) => {
-                        gtk_window.set_accept_focus(true);
-                        gtk_window.set_focus_on_map(true);
-                        gtk_window.present();
-                        force_x11_focus(&window);
-                    }
-                    Err(error) => {
-                        #[cfg(debug_assertions)]
-                        eprintln!("cliphistory: failed to access GTK window: {error}");
-                    }
+            match window.gtk_window() {
+                Ok(gtk_window) => {
+                    gtk_window.set_accept_focus(true);
+                    gtk_window.set_focus_on_map(true);
+                    gtk_window.present();
+                    force_x11_focus(&window);
+                }
+                Err(error) => {
+                    #[cfg(debug_assertions)]
+                    eprintln!("cliphistory: failed to access GTK window: {error}");
                 }
             }
         });

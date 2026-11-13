@@ -255,6 +255,23 @@ input:focus-visible {
   border-color: var(--selection-border);
 }
 
+.entry-thumb {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.entry-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
 .entry-body {
   flex: 1;
   min-width: 0;
