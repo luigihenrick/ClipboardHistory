@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ClipboardIcon,
@@ -21,13 +21,21 @@ interface RowProps {
   entry: Entry;
   index: number;
   selected: boolean;
-  onHover: () => void;
-  onCopy: () => void;
-  onPin: () => void;
-  onDelete: () => void;
+  onHover: (index: number) => void;
+  onCopy: (entry: Entry) => void;
+  onPin: (entry: Entry) => void;
+  onDelete: (entry: Entry) => void;
 }
 
-function EntryRow({ entry, index, selected, onHover, onCopy, onPin, onDelete }: RowProps) {
+const EntryRow = memo(function EntryRow({
+  entry,
+  index,
+  selected,
+  onHover,
+  onCopy,
+  onPin,
+  onDelete,
+}: RowProps) {
   const { t, language } = useI18n();
 
   const pinLabel = entry.pinned ? t("popup.unpin") : t("popup.pin");
@@ -38,8 +46,8 @@ function EntryRow({ entry, index, selected, onHover, onCopy, onPin, onDelete }: 
       data-index={index}
       role="option"
       aria-selected={selected}
-      onMouseEnter={onHover}
-      onClick={onCopy}
+      onMouseEnter={() => onHover(index)}
+      onClick={() => onCopy(entry)}
     >
       <div className="entry-body">
         {entry.kind === "image" ? (
@@ -75,7 +83,7 @@ function EntryRow({ entry, index, selected, onHover, onCopy, onPin, onDelete }: 
           aria-label={pinLabel}
           onClick={(event) => {
             event.stopPropagation();
-            onPin();
+            onPin(entry);
           }}
         >
           <PinIcon filled={entry.pinned} />
@@ -88,7 +96,7 @@ function EntryRow({ entry, index, selected, onHover, onCopy, onPin, onDelete }: 
           aria-label={t("popup.remove")}
           onClick={(event) => {
             event.stopPropagation();
-            onDelete();
+            onDelete(entry);
           }}
         >
           <TrashIcon />
@@ -96,7 +104,7 @@ function EntryRow({ entry, index, selected, onHover, onCopy, onPin, onDelete }: 
       </div>
     </div>
   );
-}
+});
 
 export default function Popup() {
   const { t, language, setLanguage: applyLanguage } = useI18n();
@@ -110,6 +118,7 @@ export default function Popup() {
   const listRef = useRef<HTMLDivElement>(null);
   const requestId = useRef(0);
   const searchRef = useRef(search);
+  const skipNextSearchRefresh = useRef(false);
 
   useEffect(() => {
     searchRef.current = search;
@@ -135,6 +144,11 @@ export default function Popup() {
 
   useEffect(() => {
     // Debounce search so typing does not trigger an IPC round-trip per keystroke.
+    if (skipNextSearchRefresh.current) {
+      skipNextSearchRefresh.current = false;
+      return;
+    }
+
     const timeout = window.setTimeout(() => {
       void refresh(search);
     }, 120);
@@ -155,6 +169,7 @@ export default function Popup() {
     let unlisten: (() => void) | undefined;
 
     void onEvent("popup://shown", () => {
+      skipNextSearchRefresh.current = searchRef.current.length > 0;
       setSearch("");
       setSelected(0);
       setLoading(true);
@@ -407,10 +422,10 @@ export default function Popup() {
                 entry={entry}
                 index={index}
                 selected={selected === index}
-                onHover={() => setSelected(index)}
-                onCopy={() => void copy(entry)}
-                onPin={() => void handlePin(entry)}
-                onDelete={() => void handleDelete(entry)}
+                onHover={setSelected}
+                onCopy={copy}
+                onPin={handlePin}
+                onDelete={handleDelete}
               />
             ))}
           </div>
@@ -427,10 +442,10 @@ export default function Popup() {
                 entry={entry}
                 index={index}
                 selected={selected === index}
-                onHover={() => setSelected(index)}
-                onCopy={() => void copy(entry)}
-                onPin={() => void handlePin(entry)}
-                onDelete={() => void handleDelete(entry)}
+                onHover={setSelected}
+                onCopy={copy}
+                onPin={handlePin}
+                onDelete={handleDelete}
               />
             ))}
           </div>

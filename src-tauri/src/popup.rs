@@ -50,6 +50,58 @@ fn center_popup(window: &tauri::WebviewWindow) {
     }
 }
 
+/// Last-resort focus fallback for X11/XWayland window managers that ignore GTK's `present()`.
+///
+/// Raising the window and forcing the X input focus is more aggressive than `_NET_ACTIVE_WINDOW`,
+/// but it is only used while the popup is visible and has not received focus yet.
+#[cfg(target_os = "linux")]
+fn force_x11_focus(window: &tauri::WebviewWindow) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::{
+        ClientMessageEvent, ConfigureWindowAux, ConnectionExt, EventMask, InputFocus, StackMode,
+    };
+
+    let Ok(handle) = window.window_handle() else {
+        return;
+    };
+
+    let xid = match handle.as_raw() {
+        RawWindowHandle::Xlib(handle) => handle.window as u32,
+        RawWindowHandle::Xcb(handle) => handle.window.get(),
+        _ => return,
+    };
+    if xid == 0 {
+        return;
+    }
+
+    let Ok((connection, screen_num)) = x11rb::connect(None) else {
+        return;
+    };
+
+    let _ =
+        connection.configure_window(xid, &ConfigureWindowAux::new().stack_mode(StackMode::ABOVE));
+
+    // Ask the window manager to activate the window as a pager request (source 2), which
+    // bypasses some focus-stealing-prevention heuristics on X11/XWayland.
+    if let Ok(atom) = connection.intern_atom(false, b"_NET_ACTIVE_WINDOW") {
+        if let Ok(reply) = atom.reply() {
+            let root = connection.setup().roots[screen_num].root;
+            let event =
+                ClientMessageEvent::new(32, xid, reply.atom, [2u32, x11rb::CURRENT_TIME, 0, 0, 0]);
+            let _ = connection.send_event(
+                false,
+                root,
+                EventMask::SUBSTRUCTURE_REDIRECT | EventMask::SUBSTRUCTURE_NOTIFY,
+                event,
+            );
+        }
+    }
+
+    let _ = connection.set_input_focus(InputFocus::PARENT, xid, x11rb::CURRENT_TIME);
+    let _ = connection.flush();
+}
+
 /// Asks the window manager to focus the popup.
 ///
 /// On Linux, Tauri's `set_focus` ends up calling GTK's `present_with_time(GDK_CURRENT_TIME)`,
@@ -58,7 +110,6 @@ fn center_popup(window: &tauri::WebviewWindow) {
 fn focus_popup(app: &AppHandle, window: &tauri::WebviewWindow) {
     #[cfg(target_os = "linux")]
     {
-        let _ = window;
         let app_handle = app.clone();
         let _ = app.run_on_main_thread(move || {
             use gtk::prelude::GtkWindowExt;
@@ -73,6 +124,7 @@ fn focus_popup(app: &AppHandle, window: &tauri::WebviewWindow) {
                         gtk_window.set_accept_focus(true);
                         gtk_window.set_focus_on_map(true);
                         gtk_window.present();
+                        force_x11_focus(&window);
                     }
                     Err(error) => {
                         #[cfg(debug_assertions)]
@@ -202,17 +254,16 @@ pub fn show(app: &AppHandle) {
     // the most reliable behavior across Wayland and X11.
     center_popup(&window);
 
+    // Start the frontend refresh before mapping the window so the list is ready sooner.
+    let _ = window.emit("popup://shown", ());
+
     let _ = window.unminimize();
     if let Err(error) = window.show() {
         eprintln!("cliphistory: failed to show popup: {error}");
     }
 
-    center_popup(&window);
-
     focus_popup(app, &window);
     spawn_focus_monitor(app.clone());
-
-    let _ = window.emit("popup://shown", ());
 }
 
 pub fn toggle(app: &AppHandle) {

@@ -156,6 +156,18 @@ pub fn run() {
                 popup_was_focused: AtomicBool::new(false),
             });
 
+            // Configure the popup before its first map so GTK/WM focus-on-map is active even
+            // before the first `present()` call from `popup::show`.
+            #[cfg(target_os = "linux")]
+            if let Some(window) = handle.get_webview_window("popup") {
+                if let Ok(gtk_window) = window.gtk_window() {
+                    use gtk::prelude::GtkWindowExt;
+
+                    gtk_window.set_accept_focus(true);
+                    gtk_window.set_focus_on_map(true);
+                }
+            }
+
             tray::create(&handle)?;
 
             match handle

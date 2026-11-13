@@ -454,7 +454,7 @@ export default function Settings() {
 
         <div className="footer-spacer" />
 
-        <span className="version">v{version || "1.0.0"} · Tauri 2</span>
+        <span className="version">v{version || "1.0.1"} · Tauri 2</span>
         <button type="button" className="btn btn-quiet" onClick={() => void api.hideSettings()}>
           {t("common.close")}
         </button>

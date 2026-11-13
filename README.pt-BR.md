@@ -7,6 +7,7 @@
 [![Testes](https://img.shields.io/github/actions/workflow/status/%user%/ClipboardHistory/ci.yml?branch=main&label=testes&logo=github)](https://github.com/%user%/ClipboardHistory/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/%user%/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/%user%/ClipboardHistory/actions/workflows/release.yml)
 [![Última versão](https://img.shields.io/github/v/release/%user%/ClipboardHistory?display_name=tag&sort=semver&label=%C3%BAltima%20vers%C3%A3o&logo=github)](https://github.com/%user%/ClipboardHistory/releases/latest)
+[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-000000.svg)](LICENSE)
 
 Histórico da área de transferência para **Windows, Linux e macOS**, feito com
 [Tauri 2](https://tauri.app) + React + TypeScript.
@@ -189,8 +190,8 @@ Para publicar uma versão:
 
    ```bash
    git add -A
-   git commit -m "Release v1.0.0"
-   git tag v1.0.0
+   git commit -m "Release v1.0.1"
+   git tag v1.0.1
    git push origin main --tags
    ```
 
@@ -481,10 +482,15 @@ O banco é `cliphistory.db`; as imagens ficam em `images/`.
 - Suporte a HTML/RTF e listas de arquivos.
 - Metadados de origem (aplicativo de onde veio a cópia).
 - Criptografia do banco e modo "não guardar senhas".
-- Tema claro.
 - Mais idiomas na interface.
 - Migrações versionadas do banco e escrita atômica das configurações.
 - Testes de integração do backend e CI de build multiplataforma.
+
+## Licença
+
+Distribuído sob a [Licença MIT](LICENSE).
+
+Copyright © 2026 Luigi Henrick.
 
 ---
 

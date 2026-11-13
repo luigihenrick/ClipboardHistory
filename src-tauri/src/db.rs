@@ -9,6 +9,12 @@ use tauri::{AppHandle, Manager};
 
 use crate::models::{Entry, Stats};
 
+/// Number of entries returned to the popup. The popup only shows a small window of rows;
+/// fetching hundreds of entries makes the initial IPC serialization and React render slower.
+const LIST_LIMIT: usize = 100;
+/// Enough text for the two-line preview; the full clipboard text stays in SQLite.
+const PREVIEW_CHARS: usize = 300;
+
 /// What needs to be written back to the system clipboard for a given entry.
 pub enum CopyPayload {
     Text(String),
@@ -211,14 +217,16 @@ impl Db {
         let conn = self.lock()?;
         let term = search.map(str::trim).filter(|value| !value.is_empty());
 
-        let base = "SELECT id, kind, substr(content, 1, 2000), img_w, img_h, pinned, created_at
-                    FROM entries";
+        let base = format!(
+            "SELECT id, kind, substr(content, 1, {PREVIEW_CHARS}), img_w, img_h, pinned, created_at
+             FROM entries"
+        );
 
         let mut entries: Vec<Entry> = match term {
             Some(query) => {
                 let sql = format!(
                     "{base} WHERE content LIKE ?1 ESCAPE '\\'
-                     ORDER BY pinned DESC, last_used_at DESC, id DESC LIMIT 500"
+                     ORDER BY pinned DESC, last_used_at DESC, id DESC LIMIT {LIST_LIMIT}"
                 );
                 let mut stmt = conn.prepare(&sql).map_err(db_err)?;
                 let rows = stmt
@@ -229,7 +237,7 @@ impl Db {
             }
             None => {
                 let sql = format!(
-                    "{base} ORDER BY pinned DESC, last_used_at DESC, id DESC LIMIT 500"
+                    "{base} ORDER BY pinned DESC, last_used_at DESC, id DESC LIMIT {LIST_LIMIT}"
                 );
                 let mut stmt = conn.prepare(&sql).map_err(db_err)?;
                 let rows = stmt

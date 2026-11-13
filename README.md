@@ -5,6 +5,7 @@
 [![Tests](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=tests&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
 [![Latest version](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=latest&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-000000.svg)](LICENSE)
 
 Clipboard history for **Windows, Linux and macOS**, built with
 [Tauri 2](https://tauri.app) + React + TypeScript.
@@ -186,8 +187,8 @@ To release a version:
 
    ```bash
    git add -A
-   git commit -m "Release v1.0.0"
-   git tag v1.0.0
+   git commit -m "Release v1.0.1"
+   git tag v1.0.1
    git push origin main --tags
    ```
 
@@ -476,10 +477,15 @@ The database is `cliphistory.db`; images live in `images/`.
 - HTML/RTF and file list support.
 - Source metadata (which app the copy came from).
 - Database encryption and a "never store passwords" mode.
-- Light theme.
 - More interface languages.
 - Versioned database migrations and atomic settings writes.
 - Backend integration tests and a cross-platform build CI.
+
+## License
+
+Released under the [MIT License](LICENSE).
+
+Copyright © 2026 Luigi Henrick.
 
 ---
 

@@ -1,4 +1,18 @@
-## ClipHistory
+## ClipHistory 1.0.1
+
+### What's new in 1.0.1
+
+- **More reliable popup focus** on Linux/X11/XWayland: focus-on-map is configured before the
+  first show, GTK `present()` keeps retrying until the popup is focused, and an X11 fallback
+  (`_NET_ACTIVE_WINDOW` + `XSetInputFocus`) forces focus when the window manager ignores the
+  request.
+- **Faster popup opening**: the list now loads at most 100 entries, previews are capped at 300
+  characters, the UI refresh starts before the window is mapped, and memoized rows keep keyboard
+  navigation smooth.
+- **MIT License**: added the `LICENSE` file and license metadata; the license is included in the
+  installers.
+- **Documentation**: added the license badge/section and notes on regenerating the grayscale
+  icons.
 
 Local clipboard history for Windows, Linux and macOS. Nothing leaves your computer.
 
@@ -39,6 +53,19 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 
 <details>
 <summary>Português (Brasil)</summary>
+
+### Novidades na 1.0.1
+
+- **Foco mais confiável** no popup em Linux/X11/XWayland: o foco ao mapear é configurado antes
+  da primeira exibição, o `present()` do GTK continua tentando até o popup focar, e um fallback
+  X11 (`_NET_ACTIVE_WINDOW` + `XSetInputFocus`) força o foco quando o window manager ignora o
+  pedido.
+- **Popup mais rápido**: a lista carrega no máximo 100 entradas, os previews são limitados a 300
+  caracteres, a atualização da interface começa antes da janela ser mapeada e as linhas usam
+  memoização para manter a navegação por teclado fluida.
+- **Licença MIT**: adicionado o arquivo `LICENSE` e os metadados de licença; a licença é
+  incluída nos instaladores.
+- **Documentação**: badge/seção de licença e nota para regenerar os ícones em tons de cinza.
 
 ### Windows
 

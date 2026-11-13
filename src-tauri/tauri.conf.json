@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ClipHistory",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "identifier": "com.luigi.cliphistory",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -55,6 +55,8 @@
     "category": "Utility",
     "shortDescription": "Histórico da área de transferência com atalho global",
     "longDescription": "ClipHistory mantém um histórico de tudo o que você copia no Windows, Linux e macOS. Abra o histórico com um atalho global, busque, fixe itens e cole novamente de qualquer aplicativo.",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
