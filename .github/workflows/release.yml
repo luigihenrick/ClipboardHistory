@@ -77,9 +77,9 @@ jobs:
           set -euo pipefail
           tag="${{ steps.meta.outputs.tag }}"
 
-          # `gh release view <tag>` does not reliably find drafts, and
-          # `gh release list --json` has no databaseId field in older gh versions.
-          # Query the REST API instead; it returns drafts and the numeric id.
+          # `gh release list --json` has no databaseId field in older gh versions,
+          # and drafts are not reliably returned by the by-tag endpoint. Query the
+          # REST API instead; it returns drafts and the numeric id.
           release_id_for_tag() {
             gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
               | jq -r --arg tag "$1" 'first(.[] | select(.tag_name == $tag) | .id)'
@@ -89,22 +89,31 @@ jobs:
 
           if [[ -n "$release_id" ]]; then
             echo "Reusing release $release_id for $tag."
-          elif git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
-            gh release create "$tag" \
-              --draft \
-              --title "ClipHistory $tag" \
-              --notes-file .github/release-notes.md
-            release_id=$(release_id_for_tag "$tag")
           else
-            gh release create "$tag" \
-              --draft \
-              --target "$GITHUB_SHA" \
-              --title "ClipHistory $tag" \
-              --notes-file .github/release-notes.md
-            release_id=$(release_id_for_tag "$tag")
+            echo "Creating draft release for $tag..."
+            body=$(cat .github/release-notes.md)
+
+            # Create through the API so the numeric id comes back in the response.
+            # target_commitish is ignored when the tag already exists.
+            if response=$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$tag" \
+              -f name="ClipHistory $tag" \
+              -f target_commitish="$GITHUB_SHA" \
+              -F draft=true \
+              -F prerelease=false \
+              -f body="$body"); then
+              release_id=$(jq -r .id <<< "$response")
+            else
+              # The release may already exist even if the list above lagged.
+              for _ in {1..10}; do
+                sleep 3
+                release_id=$(release_id_for_tag "$tag")
+                [[ -n "$release_id" ]] && break
+              done
+            fi
           fi
 
-          if [[ -z "$release_id" ]]; then
+          if [[ -z "$release_id" || "$release_id" == "null" ]]; then
             echo "::error::Could not find or create a release for $tag."
             exit 1
           fi
