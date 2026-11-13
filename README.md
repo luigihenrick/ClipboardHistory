@@ -2,11 +2,9 @@
 
 # ClipHistory
 
-<!-- Replace %user% with your GitHub username/owner. -->
-
-[![Tests](https://img.shields.io/github/actions/workflow/status/%user%/ClipboardHistory/ci.yml?branch=main&label=tests&logo=github)](https://github.com/%user%/ClipboardHistory/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/%user%/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/%user%/ClipboardHistory/actions/workflows/release.yml)
-[![Latest version](https://img.shields.io/github/v/release/%user%/ClipboardHistory?display_name=tag&sort=semver&label=latest&logo=github)](https://github.com/%user%/ClipboardHistory/releases/latest)
+[![Tests](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=tests&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
+[![Latest version](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=latest&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
 
 Clipboard history for **Windows, Linux and macOS**, built with
 [Tauri 2](https://tauri.app) + React + TypeScript.
