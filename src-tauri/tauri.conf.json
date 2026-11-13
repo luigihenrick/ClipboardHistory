@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ClipHistory",
+  "version": "0.1.0",
+  "identifier": "com.luigi.cliphistory",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "popup",
+        "title": "ClipHistory",
+        "width": 440,
+        "height": 560,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "shadow": true,
+        "center": true,
+        "visible": false,
+        "focus": true
+      },
+      {
+        "label": "settings",
+        "title": "ClipHistory",
+        "width": 560,
+        "height": 720,
+        "minWidth": 480,
+        "minHeight": 560,
+        "resizable": true,
+        "maximizable": false,
+        "fullscreen": false,
+        "center": true,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost",
+      "devCsp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 ws://127.0.0.1:1420"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Utility",
+    "shortDescription": "Histórico da área de transferência com atalho global",
+    "longDescription": "ClipHistory mantém um histórico de tudo o que você copia no Windows, Linux e macOS. Abra o histórico com um atalho global, busque, fixe itens e cole novamente de qualquer aplicativo.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}
