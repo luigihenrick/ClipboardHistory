@@ -33,7 +33,7 @@ nothing leaves your computer.
 ## Download
 
 Pre-built installers for the latest version are on the
-[Releases](https://github.com/%user%/ClipboardHistory/releases/latest) page:
+[Releases](https://github.com/luigihenrick/ClipboardHistory/releases/latest) page:
 
 - **Windows:** `ClipHistory_*_x64_en-US.msi` (or `ClipHistory_*_x64-setup.exe`) — run the
   installer. If SmartScreen appears, choose **More info → Run anyway**.

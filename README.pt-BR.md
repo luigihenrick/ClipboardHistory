@@ -2,11 +2,9 @@
 
 # ClipHistory
 
-<!-- Substitua %user% pelo seu usuário/proprietário do GitHub. -->
-
-[![Testes](https://img.shields.io/github/actions/workflow/status/%user%/ClipboardHistory/ci.yml?branch=main&label=testes&logo=github)](https://github.com/%user%/ClipboardHistory/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/%user%/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/%user%/ClipboardHistory/actions/workflows/release.yml)
-[![Última versão](https://img.shields.io/github/v/release/%user%/ClipboardHistory?display_name=tag&sort=semver&label=%C3%BAltima%20vers%C3%A3o&logo=github)](https://github.com/%user%/ClipboardHistory/releases/latest)
+[![Testes](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=testes&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
+[![Última versão](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=%C3%BAltima%20vers%C3%A3o&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-000000.svg)](LICENSE)
 
 Histórico da área de transferência para **Windows, Linux e macOS**, feito com
@@ -35,7 +33,7 @@ localmente em SQLite — nada sai do seu computador.
 ## Download
 
 Os instaladores prontos da versão mais recente ficam na página de
-[Releases](https://github.com/%user%/ClipboardHistory/releases/latest):
+[Releases](https://github.com/luigihenrick/ClipboardHistory/releases/latest):
 
 - **Windows:** `ClipHistory_*_x64_en-US.msi` (ou `ClipHistory_*_x64-setup.exe`) — execute o
   instalador. Se o SmartScreen aparecer, escolha **Mais informações → Executar assim mesmo**.
