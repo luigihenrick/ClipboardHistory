@@ -298,19 +298,15 @@ impl Db {
                 let rows = stmt
                     .query_map(params![like_pattern(query)], |row| map_entry(row))
                     .map_err(db_err)?;
-                rows.collect::<rusqlite::Result<Vec<_>>>()
-                    .map_err(db_err)?
+                rows.collect::<rusqlite::Result<Vec<_>>>().map_err(db_err)?
             }
             None => {
                 let sql = format!(
                     "{base} ORDER BY pinned DESC, last_used_at DESC, id DESC LIMIT {LIST_LIMIT}"
                 );
                 let mut stmt = conn.prepare(&sql).map_err(db_err)?;
-                let rows = stmt
-                    .query_map([], |row| map_entry(row))
-                    .map_err(db_err)?;
-                rows.collect::<rusqlite::Result<Vec<_>>>()
-                    .map_err(db_err)?
+                let rows = stmt.query_map([], |row| map_entry(row)).map_err(db_err)?;
+                rows.collect::<rusqlite::Result<Vec<_>>>().map_err(db_err)?
             }
         };
 
@@ -373,9 +369,11 @@ impl Db {
     pub fn delete(&self, id: i64) -> Result<(), String> {
         let conn = self.lock()?;
         let image_path: Option<Option<String>> = conn
-            .query_row("SELECT image_path FROM entries WHERE id = ?1", [id], |row| {
-                row.get(0)
-            })
+            .query_row(
+                "SELECT image_path FROM entries WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
             .optional()
             .map_err(db_err)?;
 

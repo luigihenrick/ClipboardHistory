@@ -103,7 +103,6 @@ mod tests {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Entry {

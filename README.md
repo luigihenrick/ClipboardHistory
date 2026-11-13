@@ -48,6 +48,12 @@ Pre-built installers for the latest version are on the
 > On Wayland, global shortcuts and auto paste are limited by the compositor. See the
 > [Wayland notes](#the-global-shortcut-does-not-work-on-wayland).
 
+## Screenshots
+
+| Popup | Settings |
+| :---: | :---: |
+| <img src="docs/screenshots/popup-dark.png" alt="ClipHistory popup" width="380" /> | <img src="docs/screenshots/settings-dark.png" alt="ClipHistory settings" width="470" /> |
+
 ## Stack
 
 | Layer           | Technology                                                                  |
@@ -57,7 +63,7 @@ Pre-built installers for the latest version are on the
 | Database        | SQLite via `rusqlite` (bundled), WAL mode                                   |
 | Clipboard       | `tauri-plugin-clipboard-manager` (polling on a dedicated thread)            |
 | Global shortcut | `tauri-plugin-global-shortcut`                                              |
-| Auto paste      | `enigo` (simulates `Ctrl+V` / `⌘V`)                                         |
+| Auto paste      | `enigo` + optional `ydotool` on Wayland                                     |
 | Autostart       | `tauri-plugin-autostart`                                                    |
 | Single instance | `tauri-plugin-single-instance`                                              |
 | Images          | `image` (PNG + small JPEG previews)                                        |
@@ -187,8 +193,8 @@ To release a version:
 
    ```bash
    git add -A
-   git commit -m "Release v1.1.0"
-   git tag v1.1.0
+   git commit -m "Release v1.1.1"
+   git tag v1.1.1
    git push origin main --tags
    ```
 
@@ -376,13 +382,15 @@ The database is `cliphistory.db`; images live in `images/`.
   **System Settings → Privacy & Security → Accessibility**; without it the system ignores
   keyboard events.
 - **Linux:** global shortcuts and auto paste work in **X11** sessions. On **Wayland**, the
-  system may block the shortcut and simulated keystrokes do not reach native Wayland apps; use
-  the tray icon or a system custom shortcut running the binary with `--toggle`. Some desktops
-  need the `libayatana-appindicator3` package for the icon to appear. On layouts with dead keys
-  (e.g. ABNT2), recording a shortcut such as Ctrl + grave accent may be dropped by the
-  windowing layer — use the manual shortcut field in Settings instead. On Wayland the popup is
-  always shown **centered on screen**; when XWayland is available the app uses it
-  automatically, and `GDK_BACKEND=wayland` forces native Wayland.
+  system may block the shortcut and simulated keystrokes do not reach native Wayland apps. Auto
+  paste restores focus to the previously active window before sending the shortcut; for native
+  Wayland apps, install `ydotool` and run `ydotoold` (uinput permissions) — ClipHistory uses it
+  automatically when available. Otherwise use the tray icon or a system custom shortcut running
+  the binary with `--toggle`. Some desktops need the `libayatana-appindicator3` package for the
+  icon to appear. On layouts with dead keys (e.g. ABNT2), recording a shortcut such as
+  Ctrl + grave accent may be dropped by the windowing layer — use the manual shortcut field in
+  Settings instead. On Wayland the popup is always shown **centered on screen**; when XWayland
+  is available the app uses it automatically, and `GDK_BACKEND=wayland` forces native Wayland.
 - **Windows:** the popup does not appear in the taskbar (`skipTaskbar`), only in the tray. Auto
   paste cannot inject keys into elevated windows (running as administrator) unless ClipHistory
   is elevated as well.
@@ -395,9 +403,9 @@ The database is `cliphistory.db`; images live in `images/`.
   missed.
 - Only **plain text** and **raster images** are captured. Formatted HTML, RTF and file lists are
   ignored.
-- Auto paste may fail if the target app takes too long to regain focus, on Wayland sessions, on
-  macOS without Accessibility permission, and in elevated windows on Windows. In those cases
-  the item remains on the clipboard.
+- Auto paste may fail if the target app takes too long to regain focus, on native Wayland
+  without `ydotool`, on macOS without Accessibility permission, and in elevated windows on
+  Windows. In those cases the item remains on the clipboard.
 - No encryption, categories, sync or export.
 - There are no automated backend tests in this version; the Rust side must be compiled with the
   system dependencies installed.

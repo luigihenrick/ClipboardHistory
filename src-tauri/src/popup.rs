@@ -55,29 +55,23 @@ fn center_popup(window: &tauri::WebviewWindow) {
 /// Raising the window and forcing the X input focus is more aggressive than `_NET_ACTIVE_WINDOW`,
 /// but it is only used while the popup is visible and has not received focus yet.
 #[cfg(target_os = "linux")]
-fn force_x11_focus(window: &tauri::WebviewWindow) {
-    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+fn activate_x11_window(xid: u32) {
     use x11rb::connection::Connection;
     use x11rb::protocol::xproto::{
         ClientMessageEvent, ConfigureWindowAux, ConnectionExt, EventMask, InputFocus, StackMode,
     };
 
-    let Ok(handle) = window.window_handle() else {
-        return;
-    };
-
-    let xid = match handle.as_raw() {
-        RawWindowHandle::Xlib(handle) => handle.window as u32,
-        RawWindowHandle::Xcb(handle) => handle.window.get(),
-        _ => return,
-    };
-    if xid == 0 {
+    if xid <= 1 {
         return;
     }
 
     let Ok((connection, screen_num)) = x11rb::connect(None) else {
         return;
     };
+    let Some(screen) = connection.setup().roots.get(screen_num) else {
+        return;
+    };
+    let root = screen.root;
 
     let _ =
         connection.configure_window(xid, &ConfigureWindowAux::new().stack_mode(StackMode::ABOVE));
@@ -86,7 +80,6 @@ fn force_x11_focus(window: &tauri::WebviewWindow) {
     // bypasses some focus-stealing-prevention heuristics on X11/XWayland.
     if let Ok(atom) = connection.intern_atom(false, b"_NET_ACTIVE_WINDOW") {
         if let Ok(reply) = atom.reply() {
-            let root = connection.setup().roots[screen_num].root;
             let event =
                 ClientMessageEvent::new(32, xid, reply.atom, [2u32, x11rb::CURRENT_TIME, 0, 0, 0]);
             let _ = connection.send_event(
@@ -100,6 +93,97 @@ fn force_x11_focus(window: &tauri::WebviewWindow) {
 
     let _ = connection.set_input_focus(InputFocus::PARENT, xid, x11rb::CURRENT_TIME);
     let _ = connection.flush();
+}
+
+#[cfg(target_os = "linux")]
+fn window_xid(window: &tauri::WebviewWindow) -> Option<u32> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    let handle = window.window_handle().ok()?;
+    match handle.as_raw() {
+        RawWindowHandle::Xlib(handle) => Some(handle.window as u32),
+        RawWindowHandle::Xcb(handle) => Some(handle.window.get()),
+        _ => None,
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn force_x11_focus(window: &tauri::WebviewWindow) {
+    if let Some(xid) = window_xid(window) {
+        activate_x11_window(xid);
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn active_x11_window() -> Option<u32> {
+    use x11rb::connection::Connection;
+    use x11rb::protocol::xproto::{AtomEnum, ConnectionExt};
+
+    let (connection, screen_num) = x11rb::connect(None).ok()?;
+    let root = connection.setup().roots.get(screen_num)?.root;
+    let atom = connection
+        .intern_atom(false, b"_NET_ACTIVE_WINDOW")
+        .ok()?
+        .reply()
+        .ok()?
+        .atom;
+    let reply = connection
+        .get_property(false, root, atom, AtomEnum::WINDOW, 0, 1)
+        .ok()?
+        .reply()
+        .ok()?;
+
+    if let Some(xid) = reply.value32().and_then(|mut values| values.next()) {
+        if xid > 1 {
+            return Some(xid);
+        }
+    }
+
+    let focus = connection.get_input_focus().ok()?.reply().ok()?.focus;
+    (focus > 1).then_some(focus)
+}
+
+/// Remembers the window that was active before the popup opened, so auto-paste can return
+/// focus to it after the popup is hidden.
+pub(crate) fn remember_previous_window(app: &AppHandle) {
+    #[cfg(target_os = "linux")]
+    if let Some(state) = app.try_state::<crate::AppState>() {
+        let popup_xid = app
+            .get_webview_window("popup")
+            .and_then(|window| window_xid(&window));
+
+        if let Some(active) = active_x11_window() {
+            if Some(active) != popup_xid {
+                if let Ok(mut previous) = state.previous_x11_window.lock() {
+                    *previous = Some(active);
+                }
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    let _ = app;
+}
+
+/// Restores focus to the window that was active before the popup opened.
+pub(crate) fn restore_previous_window(app: &AppHandle) {
+    #[cfg(target_os = "linux")]
+    {
+        let previous = app.try_state::<crate::AppState>().and_then(|state| {
+            state
+                .previous_x11_window
+                .lock()
+                .ok()
+                .and_then(|mut previous| previous.take())
+        });
+
+        if let Some(xid) = previous {
+            activate_x11_window(xid);
+        }
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    let _ = app;
 }
 
 /// Asks the window manager to focus the popup.
@@ -231,6 +315,12 @@ pub fn show(app: &AppHandle) {
 
     #[cfg(debug_assertions)]
     eprintln!("cliphistory: showing popup");
+
+    // Remember which app/window was active before the popup opens so auto-paste can return
+    // focus there after hiding it.
+    if !window.is_visible().unwrap_or(false) {
+        remember_previous_window(app);
+    }
 
     // Re-activate the app on macOS when it was hidden after an automatic paste.
     #[cfg(target_os = "macos")]

@@ -103,20 +103,17 @@ pub async fn save_settings(
         .map_err(|_| "Settings unavailable.".to_string())?;
 
     let shortcut_changed = settings.shortcut != previous.shortcut;
-    let needs_register =
-        shortcut_changed || !app.global_shortcut().is_registered(settings.shortcut.as_str());
+    let needs_register = shortcut_changed
+        || !app
+            .global_shortcut()
+            .is_registered(settings.shortcut.as_str());
 
     // Register the new shortcut before dropping the old one, so a rejected combination never
     // leaves the user without a working shortcut.
     if needs_register {
         app.global_shortcut()
             .register(settings.shortcut.as_str())
-            .map_err(|error| {
-                format!(
-                    "Could not register \"{}\": {error}",
-                    settings.shortcut
-                )
-            })?;
+            .map_err(|error| format!("Could not register \"{}\": {error}", settings.shortcut))?;
     }
 
     // Apply autostart before persisting: a failure here should abort the whole save.
@@ -130,25 +127,17 @@ pub async fn save_settings(
 
         if let Err(error) = result {
             if needs_register {
-                let _ = app
-                    .global_shortcut()
-                    .unregister(settings.shortcut.as_str());
+                let _ = app.global_shortcut().unregister(settings.shortcut.as_str());
             }
-            return Err(format!(
-                "Failed to configure launch at login: {error}"
-            ));
+            return Err(format!("Failed to configure launch at login: {error}"));
         }
     }
 
     if let Err(error) = settings_store::save(&app, &settings) {
         // Undo the OS-level side effects so memory, disk and the system stay consistent.
         if needs_register {
-            let _ = app
-                .global_shortcut()
-                .unregister(settings.shortcut.as_str());
-            let _ = app
-                .global_shortcut()
-                .register(previous.shortcut.as_str());
+            let _ = app.global_shortcut().unregister(settings.shortcut.as_str());
+            let _ = app.global_shortcut().register(previous.shortcut.as_str());
         }
         if settings.start_at_login != previous.start_at_login {
             let autolaunch = app.autolaunch();
@@ -163,9 +152,7 @@ pub async fn save_settings(
 
     // The new shortcut is live; the previous one can go away now.
     if shortcut_changed {
-        let _ = app
-            .global_shortcut()
-            .unregister(previous.shortcut.as_str());
+        let _ = app.global_shortcut().unregister(previous.shortcut.as_str());
     }
 
     {
@@ -230,10 +217,7 @@ pub async fn set_language(
 }
 
 #[tauri::command]
-pub async fn shortcut_status(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<bool, String> {
+pub async fn shortcut_status(app: AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
     let shortcut = state
         .settings
         .lock()
@@ -244,11 +228,7 @@ pub async fn shortcut_status(
 }
 
 #[tauri::command]
-pub async fn copy_entry(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    id: i64,
-) -> Result<(), String> {
+pub async fn copy_entry(app: AppHandle, state: State<'_, AppState>, id: i64) -> Result<(), String> {
     let payload = state
         .db
         .payload(id)?
@@ -291,7 +271,8 @@ pub async fn copy_entry(
             let _ = app.hide();
         }
 
-        let _ = std::thread::spawn(crate::paste::paste_clipboard);
+        let paste_app = app.clone();
+        let _ = std::thread::spawn(move || crate::paste::paste_clipboard(paste_app));
     }
 
     Ok(())
@@ -320,10 +301,7 @@ pub async fn delete_entry(
 }
 
 #[tauri::command]
-pub async fn clear_history(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<usize, String> {
+pub async fn clear_history(app: AppHandle, state: State<'_, AppState>) -> Result<usize, String> {
     let removed = state.db.clear_unpinned()?;
     let _ = app.emit("history://changed", ());
     Ok(removed)

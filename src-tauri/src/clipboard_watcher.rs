@@ -84,10 +84,7 @@ pub fn spawn(app: AppHandle) {
 
                     let hash = hash_image(rgba, width, height);
                     if let Some(state) = app.try_state::<AppState>() {
-                        match state
-                            .db
-                            .insert_image(rgba, width, height, &hash, max_items)
-                        {
+                        match state.db.insert_image(rgba, width, height, &hash, max_items) {
                             Ok(inserted) => captured = inserted,
                             Err(error) => eprintln!("cliphistory: failed to save image: {error}"),
                         }

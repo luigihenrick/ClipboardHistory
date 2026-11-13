@@ -1,20 +1,14 @@
-## ClipHistory 1.1.0
+## ClipHistory 1.1.1
 
-### What's new in 1.1.0
+### What's new in 1.1.1
 
-- **Image previews in the list**: image entries now show a small 64 px JPEG preview; existing
-  images are backfilled in the background.
-- **More reliable popup focus** on Linux/X11/XWayland: focus-on-map is configured before the
-  first show, GTK `present()` keeps retrying until the popup is focused, and an X11 fallback
-  (`_NET_ACTIVE_WINDOW` + `XSetInputFocus`) forces focus when the window manager ignores the
-  request.
-- **Faster popup opening**: the list now loads at most 100 entries, previews are capped at 300
-  characters, the UI refresh starts before the window is mapped, and memoized rows keep keyboard
-  navigation smooth.
-- **MIT License**: added the `LICENSE` file and license metadata; the license is included in the
-  installers.
-- **Documentation**: added the license badge/section and notes on regenerating the grayscale
-  icons.
+- **Auto-paste fixed**: after choosing an item, ClipHistory now restores focus to the window
+  that was active before the popup and then sends `Ctrl+V` / `⌘V`.
+- **Native Wayland**: when `ydotool` and `ydotoold` are installed and running, ClipHistory uses
+  them automatically to paste into native Wayland apps, with the correct syntax for both
+  ydotool 0.1.x and 1.x.
+- If auto-paste still fails on Wayland, configure `ydotool` or use an X11 session; the item
+  remains on the clipboard.
 
 Local clipboard history for Windows, Linux and macOS. Nothing leaves your computer.
 
@@ -56,20 +50,15 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 <details>
 <summary>Português (Brasil)</summary>
 
-### Novidades na 1.1.0
+### Novidades na 1.1.1
 
-- **Previews de imagens na lista**: entradas de imagem agora mostram um preview JPEG de 64 px;
-  imagens antigas são processadas em background.
-- **Foco mais confiável** no popup em Linux/X11/XWayland: o foco ao mapear é configurado antes
-  da primeira exibição, o `present()` do GTK continua tentando até o popup focar, e um fallback
-  X11 (`_NET_ACTIVE_WINDOW` + `XSetInputFocus`) força o foco quando o window manager ignora o
-  pedido.
-- **Popup mais rápido**: a lista carrega no máximo 100 entradas, os previews são limitados a 300
-  caracteres, a atualização da interface começa antes da janela ser mapeada e as linhas usam
-  memoização para manter a navegação por teclado fluida.
-- **Licença MIT**: adicionado o arquivo `LICENSE` e os metadados de licença; a licença é
-  incluída nos instaladores.
-- **Documentação**: badge/seção de licença e nota para regenerar os ícones em tons de cinza.
+- **Colagem automática corrigida**: ao escolher um item, o ClipHistory agora devolve o foco à
+  janela que estava ativa antes do popup e só então envia `Ctrl+V` / `⌘V`.
+- **Wayland nativo**: quando `ydotool` e `ydotoold` estão instalados e em execução, o ClipHistory
+  os usa automaticamente para colar em aplicativos Wayland nativos, com a sintaxe correta para
+  ydotool 0.1.x e 1.x.
+- Se a colagem automática ainda falhar no Wayland, configure o `ydotool` ou use uma sessão X11;
+  o item continua na área de transferência.
 
 ### Windows
 

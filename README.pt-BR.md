@@ -49,6 +49,12 @@ Os instaladores prontos da versão mais recente ficam na página de
 > No Wayland, atalhos globais e auto paste dependem do compositor. Veja as
 > [observações sobre Wayland](#o-atalho-global-não-funciona-no-wayland).
 
+## Capturas de tela
+
+| Popup | Configurações |
+| :---: | :---: |
+| <img src="docs/screenshots/popup-dark.png" alt="Popup do ClipHistory" width="380" /> | <img src="docs/screenshots/settings-dark.png" alt="Configurações do ClipHistory" width="470" /> |
+
 ## Stack
 
 | Camada          | Tecnologia                                                                 |
@@ -58,7 +64,7 @@ Os instaladores prontos da versão mais recente ficam na página de
 | Banco de dados  | SQLite via `rusqlite` (bundled), modo WAL                                  |
 | Clipboard       | `tauri-plugin-clipboard-manager` (leitura por polling em thread dedicada)  |
 | Atalho global   | `tauri-plugin-global-shortcut`                                             |
-| Auto paste      | `enigo` (simulação de `Ctrl+V` / `⌘V`)                                     |
+| Auto paste      | `enigo` + `ydotool` opcional no Wayland                                    |
 | Autostart       | `tauri-plugin-autostart`                                                   |
 | Instância única | `tauri-plugin-single-instance`                                             |
 | Imagens         | `image` (PNG + previews JPEG pequenos)                                     |
@@ -188,8 +194,8 @@ Para publicar uma versão:
 
    ```bash
    git add -A
-   git commit -m "Release v1.1.0"
-   git tag v1.1.0
+   git commit -m "Release v1.1.1"
+   git tag v1.1.1
    git push origin main --tags
    ```
 
@@ -379,13 +385,15 @@ O banco é `cliphistory.db`; as imagens ficam em `images/`.
   eventos de teclado são ignorados pelo sistema.
 - **Linux:** atalhos globais e colagem automática funcionam em sessões **X11**. Em **Wayland**,
   o sistema pode bloquear o atalho e a simulação de teclado não chega a aplicativos Wayland
-  nativos; use o ícone da bandeja ou um atalho personalizado do sistema executando o binário
-  com `--toggle`. Algumas áreas de trabalho precisam do pacote `libayatana-appindicator3` para
-  o ícone aparecer. Em layouts com *dead keys* (por exemplo, ABNT2), a gravação de atalhos como
-  Ctrl + acento grave pode ser descartada pela camada de janelas — use o campo de atalho manual
-  nas Configurações. No Wayland o popup é sempre exibido **centralizado na tela**; quando o
-  XWayland está disponível o app o usa automaticamente, e `GDK_BACKEND=wayland` força Wayland
-  nativo.
+  nativos. A colagem automática devolve o foco à janela que estava ativa antes de enviar o
+  atalho; para aplicativos Wayland nativos, instale `ydotool` e execute `ydotoold` (permissões
+  de uinput) — o ClipHistory o usa automaticamente quando disponível. Caso contrário, use o
+  ícone da bandeja ou um atalho personalizado do sistema executando o binário com `--toggle`.
+  Algumas áreas de trabalho precisam do pacote `libayatana-appindicator3` para o ícone aparecer.
+  Em layouts com *dead keys* (por exemplo, ABNT2), a gravação de atalhos como Ctrl + acento
+  grave pode ser descartada pela camada de janelas — use o campo de atalho manual nas
+  Configurações. No Wayland o popup é sempre exibido **centralizado na tela**; quando o XWayland
+  está disponível o app o usa automaticamente, e `GDK_BACKEND=wayland` força Wayland nativo.
 - **Windows:** o popup não aparece na barra de tarefas (`skipTaskbar`), apenas na bandeja. A
   colagem automática não consegue injetar teclas em janelas elevadas (executadas como
   administrador) a menos que o ClipHistory também esteja elevado.
@@ -399,8 +407,8 @@ O banco é `cliphistory.db`; as imagens ficam em `images/`.
 - Somente **texto puro** e **imagens raster** são capturados. HTML formatado, RTF e listas de
   arquivos são ignorados.
 - A colagem automática pode falhar se o aplicativo de destino demorar a recuperar o foco, em
-  sessões Wayland, no macOS sem permissão de Acessibilidade e em janelas elevadas no Windows.
-  Nesses casos o item continua na área de transferência.
+  Wayland nativo sem `ydotool`, no macOS sem permissão de Acessibilidade e em janelas elevadas
+  no Windows. Nesses casos o item continua na área de transferência.
 - Sem criptografia, categorias, sincronização ou exportação.
 - Não há teste automatizado do backend nesta versão; o lado Rust precisa ser compilado com as
   dependências de sistema instaladas.

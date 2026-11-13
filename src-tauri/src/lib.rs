@@ -21,6 +21,9 @@ pub struct AppState {
     pub popup_shown_at: Mutex<Option<Instant>>,
     /// Set once the popup has been focused at least once since it was shown.
     pub popup_was_focused: AtomicBool,
+    /// Window that had focus before the popup opened, used to restore focus for auto-paste.
+    #[cfg(target_os = "linux")]
+    pub previous_x11_window: Mutex<Option<u32>>,
 }
 
 /// Returns true when the argument requests showing the popup at startup.
@@ -71,8 +74,8 @@ fn prefer_x11_backend(
 fn configure_linux_backend() {
     let session_type = std::env::var("XDG_SESSION_TYPE").ok();
     let gdk_backend = std::env::var("GDK_BACKEND").ok();
-    let on_wayland = session_type.as_deref() == Some("wayland")
-        || std::env::var_os("WAYLAND_DISPLAY").is_some();
+    let on_wayland =
+        session_type.as_deref() == Some("wayland") || std::env::var_os("WAYLAND_DISPLAY").is_some();
     let xwayland = xwayland_available();
 
     let use_x11 = prefer_x11_backend(
@@ -154,6 +157,8 @@ pub fn run() {
                 settings: Mutex::new(loaded.clone()),
                 popup_shown_at: Mutex::new(None),
                 popup_was_focused: AtomicBool::new(false),
+                #[cfg(target_os = "linux")]
+                previous_x11_window: Mutex::new(None),
             });
 
             // Configure the popup before its first map so GTK/WM focus-on-map is active even
@@ -319,11 +324,7 @@ mod tests {
     #[test]
     fn detects_toggle_flag() {
         assert!(opens_popup_on_start(["cliphistory", "--toggle"]));
-        assert!(opens_popup_on_start([
-            "cliphistory",
-            "--other",
-            "--toggle"
-        ]));
+        assert!(opens_popup_on_start(["cliphistory", "--other", "--toggle"]));
     }
 
     #[test]
