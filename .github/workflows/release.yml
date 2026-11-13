@@ -77,12 +77,15 @@ jobs:
           set -euo pipefail
           tag="${{ steps.meta.outputs.tag }}"
 
-          # `gh release view <tag>` does not reliably find drafts, so look through the
-          # release list instead. This makes re-runs reuse a draft left by a failed build.
-          release_id=$(
-            gh release list --limit 200 --json tagName,databaseId \
-              --jq "first(.[] | select(.tagName == \"$tag\") | .databaseId)"
-          )
+          # `gh release view <tag>` does not reliably find drafts, and
+          # `gh release list --json` has no databaseId field in older gh versions.
+          # Query the REST API instead; it returns drafts and the numeric id.
+          release_id_for_tag() {
+            gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              | jq -r --arg tag "$1" 'first(.[] | select(.tag_name == $tag) | .id)'
+          }
+
+          release_id=$(release_id_for_tag "$tag")
 
           if [[ -n "$release_id" ]]; then
             echo "Reusing release $release_id for $tag."
@@ -91,16 +94,14 @@ jobs:
               --draft \
               --title "ClipHistory $tag" \
               --notes-file .github/release-notes.md
-            release_id=$(gh release list --limit 200 --json tagName,databaseId \
-              --jq "first(.[] | select(.tagName == \"$tag\") | .databaseId)")
+            release_id=$(release_id_for_tag "$tag")
           else
             gh release create "$tag" \
               --draft \
               --target "$GITHUB_SHA" \
               --title "ClipHistory $tag" \
               --notes-file .github/release-notes.md
-            release_id=$(gh release list --limit 200 --json tagName,databaseId \
-              --jq "first(.[] | select(.tagName == \"$tag\") | .databaseId)")
+            release_id=$(release_id_for_tag "$tag")
           fi
 
           if [[ -z "$release_id" ]]; then
@@ -122,14 +123,19 @@ jobs:
           - name: Linux x64
             platform: ubuntu-22.04
             cache_key: linux-x64
+            rust_targets: ""
             args: ""
           - name: Windows x64
             platform: windows-latest
             cache_key: windows-x64
+            rust_targets: ""
             args: ""
+          # Avoid the macOS arm64 hosted-runner capacity pool. The Intel runner
+          # cross-compiles both architectures into the universal DMG.
           - name: macOS universal
-            platform: macos-latest
+            platform: macos-15-intel
             cache_key: macos-universal
+            rust_targets: "aarch64-apple-darwin,x86_64-apple-darwin"
             args: "--target universal-apple-darwin"
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 90
@@ -144,7 +150,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rust_targets }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -211,7 +217,7 @@ jobs:
             gh release edit "$RELEASE_TAG" --draft=false --latest
           fi
 
-          url=$(gh release view "$RELEASE_TAG" --json url --jq .url)
+          url=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/${RELEASE_TAG//\//%2F}" | jq -r .html_url)
           {
             echo "### Release published"
             echo

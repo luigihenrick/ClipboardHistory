@@ -12,7 +12,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-latest, macos-latest]
+        # GitHub's macOS arm64 hosted-runner pool has had long allocation failures
+        # ("job was not acquired by Runner of type hosted"). Use the Intel image,
+        # which can cross-compile the universal binary.
+        os: [ubuntu-24.04, windows-latest, macos-15-intel]
 
     steps:
       - uses: actions/checkout@v4
