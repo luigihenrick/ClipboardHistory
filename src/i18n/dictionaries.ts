@@ -39,8 +39,6 @@ export const en = {
   "time.hours": "{count} h ago",
   "time.yesterday": "yesterday",
   "time.days": "{count} days ago",
-  "chars.one": "{count} character",
-  "chars.many": "{count} characters",
 
   "settings.tagline": "Your copy and paste history, always at hand.",
   "settings.globalShortcut": "Global shortcut",
@@ -139,8 +137,6 @@ export const ptBR: Record<TranslationKey, string> = {
   "time.hours": "há {count} h",
   "time.yesterday": "ontem",
   "time.days": "há {count} dias",
-  "chars.one": "{count} caractere",
-  "chars.many": "{count} caracteres",
 
   "settings.tagline": "Seu histórico de copiar e colar, sempre à mão.",
   "settings.globalShortcut": "Atalho global",

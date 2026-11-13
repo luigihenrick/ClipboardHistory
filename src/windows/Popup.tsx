@@ -3,17 +3,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardIcon,
   CloseIcon,
-  ImageIcon,
   Logo,
   PinIcon,
   SearchIcon,
   SettingsIcon,
-  TextIcon,
   TrashIcon,
 } from "../components/Icons";
 import { useI18n } from "../i18n";
 import { isLanguage } from "../i18n/types";
-import { charLabel, previewText, relativeTime } from "../lib/format";
+import { previewText, relativeTime } from "../lib/format";
 import { onEvent } from "../lib/events";
 import * as api from "../lib/ipc";
 import { formatAccelerator } from "../lib/shortcut";
@@ -43,31 +41,15 @@ function EntryRow({ entry, index, selected, onHover, onCopy, onPin, onDelete }: 
       onMouseEnter={onHover}
       onClick={onCopy}
     >
-      <div className={`entry-thumb${entry.kind === "image" ? " image" : " text"}`}>
-        {entry.kind === "image" && entry.thumbnail ? (
-          <img src={entry.thumbnail} alt="" draggable={false} />
-        ) : (
-          <TextIcon />
-        )}
-      </div>
-
       <div className="entry-body">
         {entry.kind === "image" ? (
-          <p className="entry-preview entry-preview-image">
-            <ImageIcon size={14} /> {t("popup.image")}
-          </p>
+          <p className="entry-preview entry-preview-image">{t("popup.image")}</p>
         ) : (
           <p className="entry-preview">{previewText(entry.text ?? "")}</p>
         )}
 
         <div className="entry-meta">
           <span>{relativeTime(entry.createdAt, language)}</span>
-          {entry.kind === "text" && entry.text && (
-            <>
-              <span className="meta-sep">•</span>
-              <span>{charLabel(entry.text.length, language)}</span>
-            </>
-          )}
           {entry.kind === "image" && entry.width && entry.height && (
             <>
               <span className="meta-sep">•</span>
@@ -324,7 +306,7 @@ export default function Popup() {
     <div className="popup">
       <header className="popup-header">
         <div className="brand">
-          <Logo size={22} />
+          <Logo size={26} />
           <span className="brand-name">ClipHistory</span>
         </div>
 
@@ -399,7 +381,7 @@ export default function Popup() {
 
         {!loading && total === 0 && (
           <div className="empty-state">
-            <ClipboardIcon size={34} />
+            <ClipboardIcon size={38} />
             {search ? (
               <>
                 <p className="empty-title">{t("popup.noResultsTitle")}</p>

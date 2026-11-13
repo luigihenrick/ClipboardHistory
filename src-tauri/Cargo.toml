@@ -1,6 +1,6 @@
 [package]
 name = "cliphistory"
-version = "0.1.2"
+version = "1.0.0"
 description = "Histórico de área de transferência multiplataforma"
 authors = ["Luigi"]
 edition = "2021"
@@ -23,7 +23,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 sha2 = "0.10"
-base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
 enigo = "0.6"
 

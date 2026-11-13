@@ -4,8 +4,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use base64::engine::general_purpose::STANDARD as BASE64;
-use base64::Engine;
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use tauri::{AppHandle, Manager};
 
@@ -159,7 +157,7 @@ impl Db {
 
         let now = now_ms();
 
-        // Check for duplicates and release the lock before encoding the image: thumbnailing a
+        // Check for duplicates and release the lock before writing the image: encoding a
         // 4K screenshot can take a while and should not block the UI.
         {
             let conn = self.lock()?;
@@ -180,7 +178,6 @@ impl Db {
             }
         }
 
-        let thumbnail = make_thumbnail(rgba, width, height)?;
         let file_name = format!("{}-{}.png", now, &hash[..hash.len().min(16)]);
         let file_path = self.images_dir.join(&file_name);
         write_png(&file_path, rgba, width, height)?;
@@ -190,9 +187,9 @@ impl Db {
 
         let insert = tx.execute(
             "INSERT INTO entries
-                (kind, content, image_path, thumb, img_w, img_h, hash, pinned, created_at, last_used_at)
-             VALUES ('image', NULL, ?1, ?2, ?3, ?4, ?5, 0, ?6, ?6)",
-            params![file_name, thumbnail, width, height, hash, now],
+                (kind, content, image_path, img_w, img_h, hash, pinned, created_at, last_used_at)
+             VALUES ('image', NULL, ?1, ?2, ?3, ?4, 0, ?5, ?5)",
+            params![file_name, width, height, hash, now],
         );
 
         if let Err(err) = insert {
@@ -214,7 +211,7 @@ impl Db {
         let conn = self.lock()?;
         let term = search.map(str::trim).filter(|value| !value.is_empty());
 
-        let base = "SELECT id, kind, substr(content, 1, 2000), thumb, img_w, img_h, pinned, created_at
+        let base = "SELECT id, kind, substr(content, 1, 2000), img_w, img_h, pinned, created_at
                     FROM entries";
 
         let mut entries: Vec<Entry> = match term {
@@ -396,20 +393,17 @@ fn like_pattern(query: &str) -> String {
 }
 
 fn map_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<Entry> {
-    let thumbnail: Option<Vec<u8>> = row.get(3)?;
-    let width: Option<i64> = row.get(4)?;
-    let height: Option<i64> = row.get(5)?;
+    let width: Option<i64> = row.get(3)?;
+    let height: Option<i64> = row.get(4)?;
 
     Ok(Entry {
         id: row.get(0)?,
         kind: row.get(1)?,
         text: row.get(2)?,
-        thumbnail: thumbnail
-            .map(|bytes| format!("data:image/png;base64,{}", BASE64.encode(bytes))),
         width: width.map(|value| value as u32),
         height: height.map(|value| value as u32),
-        pinned: row.get::<_, i64>(6)? != 0,
-        created_at: row.get(7)?,
+        pinned: row.get::<_, i64>(5)? != 0,
+        created_at: row.get(6)?,
     })
 }
 
@@ -451,26 +445,6 @@ fn remove_files(images_dir: &Path, files: &[String]) {
     for file in files {
         let _ = fs::remove_file(images_dir.join(file));
     }
-}
-
-fn make_thumbnail(rgba: &[u8], width: u32, height: u32) -> Result<Vec<u8>, String> {
-    let source = image::RgbaImage::from_raw(width, height, rgba.to_vec())
-        .ok_or_else(|| "Invalid image.".to_string())?;
-
-    let thumbnail_width = width.min(200).max(1);
-    let thumbnail_height =
-        ((height as u64 * thumbnail_width as u64) / width.max(1) as u64).max(1) as u32;
-
-    let thumbnail = image::imageops::thumbnail(&source, thumbnail_width, thumbnail_height);
-    let mut buffer = Vec::new();
-    image::DynamicImage::ImageRgba8(thumbnail)
-        .write_to(
-            &mut std::io::Cursor::new(&mut buffer),
-            image::ImageFormat::Png,
-        )
-        .map_err(|e| e.to_string())?;
-
-    Ok(buffer)
 }
 
 fn write_png(path: &Path, rgba: &[u8], width: u32, height: u32) -> Result<(), String> {

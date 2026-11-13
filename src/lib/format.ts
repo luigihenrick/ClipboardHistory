@@ -8,13 +8,6 @@ export function previewText(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
-export function charLabel(length: number, language: Language): string {
-  const count = new Intl.NumberFormat(locale(language)).format(length);
-  return translate(language, length === 1 ? "chars.one" : "chars.many", {
-    count,
-  });
-}
-
 export function relativeTime(
   timestamp: number,
   language: Language,

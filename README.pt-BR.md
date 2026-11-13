@@ -2,9 +2,11 @@
 
 # ClipHistory
 
-[![Testes](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=testes&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
-[![Última versão](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=%C3%BAltima%20vers%C3%A3o&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
+<!-- Substitua %user% pelo seu usuário/proprietário do GitHub. -->
+
+[![Testes](https://img.shields.io/github/actions/workflow/status/%user%/ClipboardHistory/ci.yml?branch=main&label=testes&logo=github)](https://github.com/%user%/ClipboardHistory/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/%user%/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/%user%/ClipboardHistory/actions/workflows/release.yml)
+[![Última versão](https://img.shields.io/github/v/release/%user%/ClipboardHistory?display_name=tag&sort=semver&label=%C3%BAltima%20vers%C3%A3o&logo=github)](https://github.com/%user%/ClipboardHistory/releases/latest)
 
 Histórico da área de transferência para **Windows, Linux e macOS**, feito com
 [Tauri 2](https://tauri.app) + React + TypeScript.
@@ -26,12 +28,13 @@ localmente em SQLite — nada sai do seu computador.
 - **Iniciar com o sistema** (login/autostart) configurável.
 - **Ícone na bandeja** com acesso ao histórico, às configurações e à opção de sair.
 - **Instância única**: abrir o app de novo apenas mostra o popup.
-- Interface em inglês (padrão) e português, tema escuro e janela sem moldura.
+- Interface em inglês (padrão) e português; tema claro/escuro seguindo o sistema e janela sem
+  moldura.
 
 ## Download
 
 Os instaladores prontos da versão mais recente ficam na página de
-[Releases](https://github.com/luigihenrick/ClipboardHistory/releases/latest):
+[Releases](https://github.com/%user%/ClipboardHistory/releases/latest):
 
 - **Windows:** `ClipHistory_*_x64_en-US.msi` (ou `ClipHistory_*_x64-setup.exe`) — execute o
   instalador. Se o SmartScreen aparecer, escolha **Mais informações → Executar assim mesmo**.
@@ -59,7 +62,7 @@ Os instaladores prontos da versão mais recente ficam na página de
 | Auto paste      | `enigo` (simulação de `Ctrl+V` / `⌘V`)                                     |
 | Autostart       | `tauri-plugin-autostart`                                                   |
 | Instância única | `tauri-plugin-single-instance`                                             |
-| Imagens         | `image` (thumbnails em PNG)                                                |
+| Imagens         | `image` (PNG)                                                              |
 
 ## Como funciona
 
@@ -68,8 +71,8 @@ Os instaladores prontos da versão mais recente ficam na página de
   texto, o conteúdo é lido como imagem RGBA.
 - Cada item é identificado por **SHA-256**. Copiar o mesmo conteúdo de novo não cria duplicata:
   o item existente é movido para o topo.
-- **Imagens** são gravadas como PNG no diretório de dados do app; um thumbnail de até 200 px
-  fica no SQLite para a lista carregar rápido.
+- **Imagens** são gravadas como PNG no diretório de dados do app; a lista mostra apenas
+  metadados leves, sem carregar thumbnails.
 - O popup e a janela de configurações são janelas Tauri separadas. O atalho global alterna o
   popup; perder o foco esconde (configurável), e `Esc` também fecha.
 - Com **auto paste** ligado, ao escolher um item o popup se esconde, o foco volta ao aplicativo
@@ -168,11 +171,11 @@ npm test                                          # frontend (Vitest)
 cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 ```
 
-A suíte cobre os dicionários de tradução (paridade de chaves/placeholders), formatação de datas
-e caracteres, parsing/formatação de atalhos, a política de retentativa de foco, decisões de
-blur/foco, o roteamento de `--toggle`, a configuração da janela do popup (`focus`, `center`,
-`visible`) e a configuração de release/versão. O CI também compila o projeto, o que evita
-regressões como o erro de tempo de vida do closure no `setup`.
+A suíte cobre os dicionários de tradução (paridade de chaves/placeholders), formatação de datas,
+parsing/formatação de atalhos, a política de retentativa de foco, decisões de blur/foco, o
+roteamento de `--toggle`, a configuração da janela do popup (`focus`, `center`, `visible`) e a
+configuração de release/versão. O CI também compila o projeto, o que evita regressões como o
+erro de tempo de vida do closure no `setup`.
 
 ### Publicando uma release
 
@@ -186,8 +189,8 @@ Para publicar uma versão:
 
    ```bash
    git add -A
-   git commit -m "Release v0.1.1"
-   git tag v0.1.1
+   git commit -m "Release v1.0.0"
+   git tag v1.0.0
    git push origin main --tags
    ```
 
@@ -205,6 +208,13 @@ assinar e notarizar, adicione os secrets habituais do Tauri (`APPLE_CERTIFICATE`
 `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`,
 `APPLE_TEAM_ID`) e passe-os para o step `tauri-action` no `release.yml`;
 `APPLE_SIGNING_IDENTITY` substitui a identidade ad-hoc.
+
+O ícone do app é o SVG transparente em tons de cinza em `assets/icon.svg`. Depois de alterá-lo,
+regenere os ícones das plataformas com:
+
+```bash
+npx tauri icon assets/icon.svg
+```
 
 
 ## Solução de problemas
@@ -345,13 +355,13 @@ O idioma da interface pode ser trocado no topo da janela de Configurações. Ing
 ## Onde ficam os dados
 
 Tudo é local, no diretório de dados do app definido pelo identificador
-`com.luigi.cliphistory`:
+`com.%user%.cliphistory`:
 
 | SO      | Banco e imagens                                                    | Configurações                                   |
 | ------- | ------------------------------------------------------------------ | ----------------------------------------------- |
-| Linux   | `~/.local/share/com.luigi.cliphistory/`                            | `~/.config/com.luigi.cliphistory/settings.json` |
-| macOS   | `~/Library/Application Support/com.luigi.cliphistory/`             | idem                                            |
-| Windows | `%APPDATA%\com.luigi.cliphistory\`                                 | idem                                            |
+| Linux   | `~/.local/share/com.%user%.cliphistory/`                            | `~/.config/com.%user%.cliphistory/settings.json` |
+| macOS   | `~/Library/Application Support/com.%user%.cliphistory/`             | idem                                            |
+| Windows | `%APPDATA%\com.%user%.cliphistory\`                                 | idem                                            |
 
 O banco é `cliphistory.db`; as imagens ficam em `images/`.
 

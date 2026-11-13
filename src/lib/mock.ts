@@ -12,22 +12,6 @@ const minute = 60_000;
 const hour = 60 * minute;
 const day = 24 * hour;
 
-function svgThumbnail(hue: number, label: string): string {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400">
-    <defs>
-      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="hsl(${hue} 85% 68%)"/>
-        <stop offset="1" stop-color="hsl(${hue + 45} 70% 38%)"/>
-      </linearGradient>
-    </defs>
-    <rect width="640" height="400" fill="url(#g)"/>
-    <circle cx="510" cy="90" r="120" fill="white" opacity="0.14"/>
-    <circle cx="130" cy="330" r="150" fill="black" opacity="0.12"/>
-    <text x="42" y="218" font-family="sans-serif" font-size="54" font-weight="700" fill="white" opacity="0.92">${label}</text>
-  </svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
 const storedLanguage =
   typeof localStorage !== "undefined" &&
   localStorage.getItem("cliphistory.language") === "pt-BR"
@@ -48,7 +32,6 @@ let entries: Entry[] = [
     id: 1,
     kind: "image",
     text: null,
-    thumbnail: svgThumbnail(262, "Dashboard"),
     width: 1280,
     height: 800,
     pinned: true,
@@ -58,7 +41,6 @@ let entries: Entry[] = [
     id: 2,
     kind: "text",
     text: "npm run tauri dev",
-    thumbnail: null,
     width: null,
     height: null,
     pinned: true,
@@ -68,7 +50,6 @@ let entries: Entry[] = [
     id: 3,
     kind: "text",
     text: "ClipHistory home page: clipboard history, search, pinned items and a global shortcut on Windows, Linux and macOS.",
-    thumbnail: null,
     width: null,
     height: null,
     pinned: false,
@@ -78,7 +59,6 @@ let entries: Entry[] = [
     id: 4,
     kind: "image",
     text: null,
-    thumbnail: svgThumbnail(198, "Screenshot"),
     width: 1440,
     height: 900,
     pinned: false,
@@ -88,7 +68,6 @@ let entries: Entry[] = [
     id: 5,
     kind: "text",
     text: "const historical = await getEntries(search);\n\nif (historical.length === 0) {\n  setLoading(false);\n}",
-    thumbnail: null,
     width: null,
     height: null,
     pinned: false,
@@ -97,8 +76,7 @@ let entries: Entry[] = [
   {
     id: 6,
     kind: "text",
-    text: "#8B5CF6",
-    thumbnail: null,
+    text: "#000000",
     width: null,
     height: null,
     pinned: false,
@@ -108,7 +86,6 @@ let entries: Entry[] = [
     id: 7,
     kind: "text",
     text: "128 Acacia Street — Apt 42\nBelo Horizonte, MG\n30140-000",
-    thumbnail: null,
     width: null,
     height: null,
     pinned: false,
@@ -118,7 +95,6 @@ let entries: Entry[] = [
     id: 8,
     kind: "text",
     text: "Thanks for the feedback! I will review the changes and send the updated version by tomorrow morning.",
-    thumbnail: null,
     width: null,
     height: null,
     pinned: false,
@@ -128,7 +104,6 @@ let entries: Entry[] = [
     id: 9,
     kind: "text",
     text: "pnpm create tauri-app --template react-ts",
-    thumbnail: null,
     width: null,
     height: null,
     pinned: false,

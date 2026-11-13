@@ -200,7 +200,7 @@ export default function Settings() {
     <div className="settings-window">
       <header className="settings-header">
         <div className="settings-brand">
-          <Logo size={40} />
+          <Logo size={44} />
           <div>
             <h1>ClipHistory</h1>
             <p>{t("settings.tagline")}</p>
@@ -238,7 +238,7 @@ export default function Settings() {
             aria-label={t("common.close")}
             onClick={() => void api.hideSettings()}
           >
-            <CloseIcon size={14} />
+            <CloseIcon size={16} />
           </button>
         </div>
       </header>
@@ -454,7 +454,7 @@ export default function Settings() {
 
         <div className="footer-spacer" />
 
-        <span className="version">v{version || "0.1.0"} · Tauri 2</span>
+        <span className="version">v{version || "1.0.0"} · Tauri 2</span>
         <button type="button" className="btn btn-quiet" onClick={() => void api.hideSettings()}>
           {t("common.close")}
         </button>
