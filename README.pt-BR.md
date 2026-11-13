@@ -2,6 +2,10 @@
 
 # ClipHistory
 
+[![Testes](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=testes&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
+[![Última versão](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=%C3%BAltima%20vers%C3%A3o&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
+
 Histórico da área de transferência para **Windows, Linux e macOS**, feito com
 [Tauri 2](https://tauri.app) + React + TypeScript.
 
