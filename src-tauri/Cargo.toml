@@ -1,6 +1,6 @@
 [package]
 name = "cliphistory"
-version = "0.1.1"
+version = "0.1.2"
 description = "Histórico de área de transferência multiplataforma"
 authors = ["Luigi"]
 edition = "2021"
