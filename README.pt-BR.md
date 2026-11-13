@@ -24,6 +24,25 @@ localmente em SQLite — nada sai do seu computador.
 - **Instância única**: abrir o app de novo apenas mostra o popup.
 - Interface em inglês (padrão) e português, tema escuro e janela sem moldura.
 
+## Download
+
+Os instaladores prontos da versão mais recente ficam na página de
+[Releases](https://github.com/luigihenrick/ClipboardHistory/releases/latest):
+
+- **Windows:** `ClipHistory_*_x64_en-US.msi` (ou `ClipHistory_*_x64-setup.exe`) — execute o
+  instalador. Se o SmartScreen aparecer, escolha **Mais informações → Executar assim mesmo**.
+- **macOS:** `ClipHistory_*_universal.dmg` — abra o DMG e arraste o ClipHistory para Aplicativos.
+  O build tem assinatura ad-hoc, mas não é notarizado; se o macOS bloquear, clique com o botão
+  direito → **Abrir** ou execute
+  `xattr -dr com.apple.quarantine /Applications/ClipHistory.app`.
+- **Linux:** `ClipHistory_*_amd64.AppImage` (`chmod +x` e execute), `ClipHistory_*_amd64.deb`
+  (`sudo apt install ./ClipHistory_*_amd64.deb`) ou `ClipHistory-*.rpm`
+  (`sudo dnf install ./ClipHistory-*.rpm`). O AppImage usa o WebKitGTK 4.1 do sistema; se não
+  abrir, instale `libwebkit2gtk-4.1-0` (Debian/Ubuntu) ou `webkit2gtk4.1` (Fedora).
+
+> No Wayland, atalhos globais e auto paste dependem do compositor. Veja as
+> [observações sobre Wayland](#o-atalho-global-não-funciona-no-wayland).
+
 ## Stack
 
 | Camada          | Tecnologia                                                                 |
@@ -66,7 +85,7 @@ localmente em SQLite — nada sai do seu computador.
 ```bash
 sudo apt update
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
-  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxkbcommon-dev
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxkbcommon-dev libfuse2
 ```
 
 Fedora:
@@ -147,9 +166,41 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 
 A suíte cobre os dicionários de tradução (paridade de chaves/placeholders), formatação de datas
 e caracteres, parsing/formatação de atalhos, a política de retentativa de foco, decisões de
-blur/foco, o roteamento de `--toggle` e a configuração da janela do popup (`focus`, `center`,
-`visible`). O CI também compila o projeto, o que evita regressões como o erro de tempo de vida
-do closure no `setup`.
+blur/foco, o roteamento de `--toggle`, a configuração da janela do popup (`focus`, `center`,
+`visible`) e a configuração de release/versão. O CI também compila o projeto, o que evita
+regressões como o erro de tempo de vida do closure no `setup`.
+
+### Publicando uma release
+
+O workflow `.github/workflows/release.yml` compila e publica os instaladores. Ele roda quando
+uma tag começando com `v` é enviada, ou manualmente em **Actions → Release → Run workflow**.
+
+Para publicar uma versão:
+
+1. Atualize a versão em `package.json` e `src-tauri/tauri.conf.json`.
+2. Faça o commit, crie a tag e envie:
+
+   ```bash
+   git add -A
+   git commit -m "Release v0.1.1"
+   git tag v0.1.1
+   git push origin main --tags
+   ```
+
+O workflow confere se a tag corresponde à versão em `src-tauri/tauri.conf.json`, compila Linux
+(AppImage, `.deb`, `.rpm`), Windows (`.msi` e `-setup.exe`) e macOS (`.dmg` universal), envia os
+pacotes para um release em rascunho e só publica quando todas as plataformas terminam com
+sucesso. Tags com hífen (por exemplo, `v0.2.0-beta.1`) são marcadas como pré-release.
+
+> Se o workflow não conseguir criar o release, permita escrita em
+> **Settings → Actions → General → Workflow permissions** (“Read and write permissions”).
+
+Os artefatos não usam um certificado de assinatura confiável: Linux e Windows ficam sem
+assinatura, e o macOS usa assinatura ad-hoc (`"signingIdentity": "-"`), sem notarização. Para
+assinar e notarizar, adicione os secrets habituais do Tauri (`APPLE_CERTIFICATE`,
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`,
+`APPLE_TEAM_ID`) e passe-os para o step `tauri-action` no `release.yml`;
+`APPLE_SIGNING_IDENTITY` substitui a identidade ad-hoc.
 
 
 ## Solução de problemas

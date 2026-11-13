@@ -1,0 +1,219 @@
+name: Release
+
+run-name: Release ${{ github.event.inputs.tag || github.ref_name }}
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (for example, v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  create-release:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      release_id: ${{ steps.release.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate tag and version
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${RELEASE_TAG}"
+          if [[ -z "$tag" ]]; then
+            echo "::error::No release tag. Pass a tag such as v0.1.0."
+            exit 1
+          fi
+
+          if [[ "$tag" != v* ]]; then
+            echo "::error::Release tags must start with 'v' (got '$tag')."
+            exit 1
+          fi
+
+          version=$(jq -r .version src-tauri/tauri.conf.json)
+          if [[ "${tag#v}" != "$version" ]]; then
+            echo "::error::Tag $tag does not match src-tauri/tauri.conf.json version $version."
+            echo "::error::Bump the version and commit it before pushing the tag."
+            exit 1
+          fi
+
+          tag_sha=$(git rev-parse --verify --quiet "refs/tags/$tag^{commit}" || true)
+          if [[ -n "$tag_sha" && "$tag_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag $tag points to $tag_sha, but this workflow runs at $GITHUB_SHA."
+            echo "::error::Push the tag from this commit or delete/recreate it."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Create or reuse draft release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.meta.outputs.tag }}"
+
+          # `gh release view <tag>` does not reliably find drafts, so look through the
+          # release list instead. This makes re-runs reuse a draft left by a failed build.
+          release_id=$(
+            gh release list --limit 200 --json tagName,databaseId \
+              --jq "first(.[] | select(.tagName == \"$tag\") | .databaseId)"
+          )
+
+          if [[ -n "$release_id" ]]; then
+            echo "Reusing release $release_id for $tag."
+          elif git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
+            gh release create "$tag" \
+              --draft \
+              --title "ClipHistory $tag" \
+              --notes-file .github/release-notes.md
+            release_id=$(gh release list --limit 200 --json tagName,databaseId \
+              --jq "first(.[] | select(.tagName == \"$tag\") | .databaseId)")
+          else
+            gh release create "$tag" \
+              --draft \
+              --target "$GITHUB_SHA" \
+              --title "ClipHistory $tag" \
+              --notes-file .github/release-notes.md
+            release_id=$(gh release list --limit 200 --json tagName,databaseId \
+              --jq "first(.[] | select(.tagName == \"$tag\") | .databaseId)")
+          fi
+
+          if [[ -z "$release_id" ]]; then
+            echo "::error::Could not find or create a release for $tag."
+            exit 1
+          fi
+
+          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build (${{ matrix.name }})
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Build on the oldest supported Ubuntu to keep the AppImage/.deb glibc
+          # requirements compatible with more distributions.
+          - name: Linux x64
+            platform: ubuntu-22.04
+            cache_key: linux-x64
+            args: ""
+          - name: Windows x64
+            platform: windows-latest
+            cache_key: windows-x64
+            args: ""
+          - name: macOS universal
+            platform: macos-latest
+            cache_key: macos-universal
+            args: "--target universal-apple-darwin"
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.cache_key }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev \
+            libssl-dev \
+            libfuse2 \
+            rpm \
+            build-essential \
+            curl \
+            wget \
+            file
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Frontend tests
+        run: npm test
+
+      # Optional signing: add the usual Tauri secrets (APPLE_CERTIFICATE,
+      # APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD,
+      # APPLE_TEAM_ID) and pass them as env vars here. Without them the macOS bundle keeps
+      # the ad-hoc identity from tauri.conf.json; users may need to allow it on first launch.
+      - name: Build and upload bundles
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ needs.create-release.outputs.tag }}
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          releaseDraft: true
+          includeUpdaterJson: false
+          retryAttempts: 2
+          args: ${{ matrix.args }}
+
+  publish-release:
+    name: Publish release
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.create-release.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            gh release edit "$RELEASE_TAG" --draft=false --prerelease
+          else
+            gh release edit "$RELEASE_TAG" --draft=false --latest
+          fi
+
+          url=$(gh release view "$RELEASE_TAG" --json url --jq .url)
+          {
+            echo "### Release published"
+            echo
+            echo "$url"
+          } >> "$GITHUB_STEP_SUMMARY"

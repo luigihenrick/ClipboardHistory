@@ -25,6 +25,24 @@ nothing leaves your computer.
 - English and Portuguese (pt-BR) interface — English is the default — dark theme and frameless
   window.
 
+## Download
+
+Pre-built installers for the latest version are on the
+[Releases](https://github.com/luigihenrick/ClipboardHistory/releases/latest) page:
+
+- **Windows:** `ClipHistory_*_x64_en-US.msi` (or `ClipHistory_*_x64-setup.exe`) — run the
+  installer. If SmartScreen appears, choose **More info → Run anyway**.
+- **macOS:** `ClipHistory_*_universal.dmg` — open the DMG and drag ClipHistory to Applications.
+  The build is ad-hoc signed but not notarized; if macOS blocks it, right-click → **Open** or run
+  `xattr -dr com.apple.quarantine /Applications/ClipHistory.app`.
+- **Linux:** `ClipHistory_*_amd64.AppImage` (`chmod +x` and run), `ClipHistory_*_amd64.deb`
+  (`sudo apt install ./ClipHistory_*_amd64.deb`) or `ClipHistory-*.rpm`
+  (`sudo dnf install ./ClipHistory-*.rpm`). The AppImage uses the system WebKitGTK 4.1; if it
+  does not start, install `libwebkit2gtk-4.1-0` (Debian/Ubuntu) or `webkit2gtk4.1` (Fedora).
+
+> On Wayland, global shortcuts and auto paste are limited by the compositor. See the
+> [Wayland notes](#the-global-shortcut-does-not-work-on-wayland).
+
 ## Stack
 
 | Layer           | Technology                                                                  |
@@ -67,7 +85,7 @@ nothing leaves your computer.
 ```bash
 sudo apt update
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
-  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxkbcommon-dev
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libxkbcommon-dev libfuse2
 ```
 
 Fedora:
@@ -148,9 +166,41 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 
 The suite covers the translation dictionaries (key/placeholder parity), date and character
 formatting, shortcut parsing/formatting, the focus-retry policy, blur/hide decisions, `--toggle`
-routing and the popup window configuration (`focus`, `center`, `visible`). CI also compiles the
-project, which is what prevents regressions such as a `'static` closure lifetime error from
-reaching a build.
+routing, the popup window configuration (`focus`, `center`, `visible`) and the release/version
+configuration. CI also compiles the project, which is what prevents regressions such as a
+`'static` closure lifetime error from reaching a build.
+
+### Releasing
+
+`.github/workflows/release.yml` builds and publishes the installers. It runs when a tag
+starting with `v` is pushed, or manually via **Actions → Release → Run workflow**.
+
+To release a version:
+
+1. Bump the version in both `package.json` and `src-tauri/tauri.conf.json`.
+2. Commit, tag and push:
+
+   ```bash
+   git add -A
+   git commit -m "Release v0.1.1"
+   git tag v0.1.1
+   git push origin main --tags
+   ```
+
+The workflow checks that the tag matches `src-tauri/tauri.conf.json`, builds Linux (AppImage,
+`.deb`, `.rpm`), Windows (`.msi` and `-setup.exe`) and macOS (universal `.dmg`), uploads the
+bundles to a draft release and publishes it only after every platform succeeds. Tags containing
+a hyphen (for example, `v0.2.0-beta.1`) are marked as prereleases.
+
+> If the workflow cannot create the release, allow write access under
+> **Settings → Actions → General → Workflow permissions** (“Read and write permissions”).
+
+The artifacts do not use a trusted code-signing certificate: Linux and Windows builds are
+unsigned, and macOS uses an ad-hoc signature (`"signingIdentity": "-"`) that is not notarized.
+To sign and notarize, add the usual Tauri secrets (`APPLE_CERTIFICATE`,
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`,
+`APPLE_TEAM_ID`) and pass them to the `tauri-action` step in `release.yml`;
+`APPLE_SIGNING_IDENTITY` overrides the ad-hoc identity.
 
 
 ## Troubleshooting

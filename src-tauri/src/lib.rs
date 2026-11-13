@@ -313,6 +313,28 @@ mod tests {
     }
 
     #[test]
+    fn release_config_bundles_every_platform() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+
+        assert_eq!(config["bundle"]["targets"].as_str(), Some("all"));
+        assert_eq!(
+            config["bundle"]["macOS"]["signingIdentity"].as_str(),
+            Some("-")
+        );
+    }
+
+    #[test]
+    fn package_and_tauri_versions_match() {
+        let tauri: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let package: serde_json::Value =
+            serde_json::from_str(include_str!("../../package.json")).unwrap();
+
+        assert_eq!(package["version"], tauri["version"]);
+    }
+
+    #[test]
     fn prefers_x11_on_wayland_when_xwayland_is_available() {
         assert!(prefer_x11_backend(Some("wayland"), true, true, None));
         assert!(prefer_x11_backend(None, true, true, None));
