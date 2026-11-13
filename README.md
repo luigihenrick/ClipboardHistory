@@ -2,7 +2,7 @@
 
 # ClipHistory
 
-[![Tests](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=tests&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?event=push&label=tests&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?event=push&label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
 [![Latest version](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=latest&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-000000.svg)](LICENSE)
@@ -22,7 +22,7 @@ only network request is the update check against GitHub; clipboard data is never
 - **Configurable global shortcut** (default `Ctrl+Shift+V` / `⌘ ⇧ V`), working while the app
   runs in the background.
 - **Fast popup** with instant search, keyboard navigation and copy on `Enter`.
-- **Centered popup** on the work area of the monitor under the cursor.
+- **Centered popup** on the work area of the primary monitor.
 - **Pinned items** that survive clearing the history and retention limits. They show an
   always-visible pin icon and follow the normal recency order, moving to the top when copied like
   any other item.
@@ -167,12 +167,6 @@ http://localhost:1420/?window=settings
 
 This mode only exists in development (`import.meta.env.DEV`) and is not part of the final app.
 
-### CI
-
-The workflow in `.github/workflows/ci.yml` runs the frontend tests/type-check/build and the
-backend `cargo check`/`cargo test` on Windows, Linux and macOS on every push/PR — useful to
-validate the Rust code without the system dependencies on your local machine.
-
 ### Tests
 
 ```bash
@@ -182,8 +176,9 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 
 The suite covers the translation dictionaries (key/placeholder parity), date formatting, shortcut
 parsing/formatting, the focus-retry policy, blur/hide decisions, `--toggle` routing, popup
-centering, update version/URL validation, the popup window configuration (`focus`, `center`,
-`visible`) and the release/version configuration. CI also compiles the project, which is what
+centering on the primary monitor, update version/URL validation, the popup window
+configuration (`focus`, `center`, `visible`) and the release/version configuration. The release
+workflow runs these tests and the frontend type-check/build before creating a release, which
 prevents regressions such as a `'static` closure lifetime error from reaching a build.
 
 ### Releasing
@@ -304,9 +299,9 @@ If the output is `wayland`, use one of these alternatives:
    “Zorin Desktop on Xorg” on the login screen).
 
 > Native Wayland does not let apps position top-level windows, and X11/XWayland window managers
-> may override placement anyway, so the popup is always shown **centered on screen**. When
-> XWayland is available ClipHistory uses it automatically; to force native Wayland, start it
-> with `GDK_BACKEND=wayland` (the compositor then controls placement).
+> may override placement anyway. ClipHistory centers the popup on the primary monitor; on native
+> Wayland the compositor has the final say. When XWayland is available ClipHistory uses it
+> automatically; to force native Wayland, start it with `GDK_BACKEND=wayland`.
 >
 > If the startup log shows `gdk_backend=Some("wayland")`, an explicit `GDK_BACKEND=wayland` is
 > set in the environment — unset it (`unset GDK_BACKEND`) and restart. If the log shows
@@ -394,8 +389,8 @@ The database is `cliphistory.db`; images live in `images/`.
   the binary with `--toggle`. Some desktops need the `libayatana-appindicator3` package for the
   icon to appear. On layouts with dead keys (e.g. ABNT2), recording a shortcut such as
   Ctrl + grave accent may be dropped by the windowing layer — use the manual shortcut field in
-  Settings instead. On Wayland the popup is always shown **centered on screen**; when XWayland
-  is available the app uses it automatically, and `GDK_BACKEND=wayland` forces native Wayland.
+  Settings instead. On native Wayland the compositor controls popup placement; when XWayland is
+  available the app uses it automatically, and `GDK_BACKEND=wayland` forces native Wayland.
 - **Windows:** the popup does not appear in the taskbar (`skipTaskbar`), only in the tray. Auto
   paste cannot inject keys into elevated windows (running as administrator) unless ClipHistory
   is elevated as well.
@@ -492,7 +487,7 @@ The database is `cliphistory.db`; images live in `images/`.
 - Database encryption and a "never store passwords" mode.
 - More interface languages.
 - Versioned database migrations and atomic settings writes.
-- Backend integration tests and a cross-platform build CI.
+- Backend integration tests.
 
 ## License
 

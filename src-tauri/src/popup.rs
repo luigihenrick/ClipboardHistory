@@ -43,42 +43,178 @@ fn should_request_focus(was_focused: bool, focused: bool, attempt: u32) -> bool 
     !was_focused && !focused && should_retry_focus(attempt)
 }
 
-fn center_popup(window: &tauri::WebviewWindow) {
-    let monitor = window
-        .cursor_position()
-        .ok()
-        .and_then(|cursor| window.monitor_from_point(cursor.x, cursor.y).ok().flatten())
-        .or_else(|| window.current_monitor().ok().flatten())
-        .or_else(|| window.primary_monitor().ok().flatten());
+/// Geometry of a monitor as reported by the platform. Kept separate from Tauri's `Monitor` so
+/// the primary-monitor selection can be unit-tested.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct MonitorRect {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+    primary: bool,
+}
 
-    let Some(monitor) = monitor else {
+/// Returns the monitor explicitly marked as primary by the platform.
+///
+/// Do not infer the primary monitor from the desktop origin: a secondary monitor can be at
+/// `(0, 0)` while the primary one is to its right.
+fn primary_monitor_rect(monitors: &[MonitorRect]) -> Option<MonitorRect> {
+    monitors.iter().copied().find(|monitor| monitor.primary)
+}
+
+/// X11/XWayland exposes the primary output through RandR. This is more reliable than Tauri's
+/// `primary_monitor()` on Linux, which can be missing or point at the wrong monitor.
+#[cfg(target_os = "linux")]
+fn x11_primary_monitor_rect() -> Option<MonitorRect> {
+    use x11rb::connection::Connection;
+    use x11rb::protocol::randr::ConnectionExt as RandrConnectionExt;
+
+    let (connection, screen_num) = x11rb::connect(None).ok()?;
+    let root = connection.setup().roots.get(screen_num)?.root;
+    let reply = connection
+        .randr_get_monitors(root, true)
+        .ok()?
+        .reply()
+        .ok()?;
+
+    let monitors: Vec<MonitorRect> = reply
+        .monitors
+        .into_iter()
+        .map(|monitor| MonitorRect {
+            x: monitor.x as i32,
+            y: monitor.y as i32,
+            width: monitor.width as u32,
+            height: monitor.height as u32,
+            primary: monitor.primary,
+        })
+        .collect();
+
+    primary_monitor_rect(&monitors)
+}
+
+/// Returns the primary monitor's usable area as `(x, y, width, height)`.
+fn primary_monitor_area(window: &tauri::WebviewWindow) -> Option<(i32, i32, u32, u32)> {
+    #[cfg(target_os = "linux")]
+    if let Some(primary) = x11_primary_monitor_rect() {
+        if let Ok(monitors) = window.available_monitors() {
+            if let Some(monitor) = monitors.iter().find(|monitor| {
+                monitor.position().x == primary.x
+                    && monitor.position().y == primary.y
+                    && monitor.size().width == primary.width
+                    && monitor.size().height == primary.height
+            }) {
+                let area = monitor.work_area();
+                return Some((
+                    area.position.x,
+                    area.position.y,
+                    area.size.width,
+                    area.size.height,
+                ));
+            }
+        }
+
+        // RandR knows the primary monitor even if Tauri does not expose a matching monitor.
+        return Some((primary.x, primary.y, primary.width, primary.height));
+    }
+
+    match window.primary_monitor() {
+        Ok(Some(monitor)) => {
+            let area = monitor.work_area();
+            Some((
+                area.position.x,
+                area.position.y,
+                area.size.width,
+                area.size.height,
+            ))
+        }
+        Ok(None) => None,
+        Err(error) => {
+            eprintln!("cliphistory: failed to query the primary monitor: {error}");
+            None
+        }
+    }
+}
+
+fn popup_size(window: &tauri::WebviewWindow) -> tauri::PhysicalSize<u32> {
+    window
+        .outer_size()
+        .or_else(|_| window.inner_size())
+        .ok()
+        .filter(|size| size.width > 0 && size.height > 0)
+        .unwrap_or(tauri::PhysicalSize::new(440, 560))
+}
+
+/// Calculates the primary-monitor position for the popup.
+fn popup_position(window: &tauri::WebviewWindow) -> Option<tauri::PhysicalPosition<i32>> {
+    let (area_x, area_y, area_width, area_height) = primary_monitor_area(window)?;
+    let size = popup_size(window);
+    let (x, y) = centered_position(
+        area_x,
+        area_y,
+        area_width,
+        area_height,
+        size.width,
+        size.height,
+    );
+
+    Some(tauri::PhysicalPosition::new(x, y))
+}
+
+/// Centers the popup on the primary monitor's work area, regardless of where the cursor or the
+/// window currently is.
+fn center_on_primary_monitor(window: &tauri::WebviewWindow) {
+    let Some((area_x, area_y, area_width, area_height)) = primary_monitor_area(window) else {
+        #[cfg(target_os = "linux")]
+        eprintln!(
+            "cliphistory: no primary monitor reported by X11 RandR or the windowing backend; \
+             falling back to window.center()"
+        );
+        #[cfg(not(target_os = "linux"))]
+        eprintln!(
+            "cliphistory: no primary monitor reported by the platform; \
+             falling back to window.center()"
+        );
+
         if let Err(error) = window.center() {
-            #[cfg(debug_assertions)]
             eprintln!("cliphistory: failed to center popup: {error}");
         }
         return;
     };
 
-    let area = monitor.work_area();
-    let size = window
-        .outer_size()
-        .or_else(|_| window.inner_size())
-        .ok()
-        .filter(|size| size.width > 0 && size.height > 0)
-        .unwrap_or(tauri::PhysicalSize::new(440, 560));
-
+    let size = popup_size(window);
     let (x, y) = centered_position(
-        area.position.x,
-        area.position.y,
-        area.size.width,
-        area.size.height,
+        area_x,
+        area_y,
+        area_width,
+        area_height,
         size.width,
         size.height,
     );
 
     if let Err(error) = window.set_position(tauri::PhysicalPosition::new(x, y)) {
-        #[cfg(debug_assertions)]
-        eprintln!("cliphistory: failed to center popup: {error}");
+        eprintln!(
+            "cliphistory: failed to center popup on the primary monitor at ({area_x}, {area_y}): \
+             {error}"
+        );
+    }
+}
+
+fn apply_popup_position(
+    window: &tauri::WebviewWindow,
+    position: Option<tauri::PhysicalPosition<i32>>,
+) {
+    match position {
+        Some(position) => {
+            if let Err(error) = window.set_position(position) {
+                eprintln!(
+                    "cliphistory: failed to set the explicit popup position: {error}; \
+                     centering on the primary monitor"
+                );
+
+                center_on_primary_monitor(window);
+            }
+        }
+        None => center_on_primary_monitor(window),
     }
 }
 
@@ -96,19 +232,20 @@ fn centered_position(
     (x, y)
 }
 
-/// Window managers can override the position while mapping the window. Re-apply the center
-/// once after the first frame so the first popup is not placed off-center by the WM.
-fn schedule_center_retry(app: &AppHandle) {
+/// Window managers can override the position while mapping the window. Re-apply the captured
+/// position once after the first frame so the popup is not placed somewhere else by the WM.
+fn schedule_position_retry(app: &AppHandle, position: Option<tauri::PhysicalPosition<i32>>) {
     let app = app.clone();
     std::thread::spawn(move || {
         // Give the WM time to map/place the window, then correct it again if needed.
         for delay in [120_u64, 220] {
             std::thread::sleep(Duration::from_millis(delay));
             let app_for_main = app.clone();
+            let position = position.clone();
             let _ = app.run_on_main_thread(move || {
                 if let Some(window) = app_for_main.get_webview_window("popup") {
                     if window.is_visible().unwrap_or(false) {
-                        center_popup(&window);
+                        apply_popup_position(&window, position);
                     }
                 }
             });
@@ -404,9 +541,10 @@ pub fn show(app: &AppHandle) {
         state.popup_was_focused.store(false, Ordering::SeqCst);
     }
 
-    // Always show the popup centered; window managers are free to place/raise it, and this is
-    // the most reliable behavior across Wayland and X11.
-    center_popup(&window);
+    // Always open centered on the primary monitor. Capture the position before showing so the
+    // post-map retries reapply the same target.
+    let position = popup_position(&window);
+    apply_popup_position(&window, position.clone());
 
     // Start the frontend refresh before mapping the window so the list is ready sooner.
     let _ = window.emit("popup://shown", ());
@@ -416,10 +554,10 @@ pub fn show(app: &AppHandle) {
         eprintln!("cliphistory: failed to show popup: {error}");
     }
 
-    // The window manager may place the window while mapping it; center once more and verify
-    // again shortly after the first frame.
-    center_popup(&window);
-    schedule_center_retry(app);
+    // The window manager may place the window while mapping it; apply the same position once
+    // more and verify again shortly after the first frame.
+    apply_popup_position(&window, position.clone());
+    schedule_position_retry(app, position);
 
     focus_popup(app, &window);
     spawn_focus_monitor(app.clone());
@@ -469,8 +607,8 @@ mod tests {
     use std::time::{Duration, Instant};
 
     use super::{
-        centered_position, should_hide_on_blur, should_request_focus, should_retry_focus,
-        BLUR_GRACE, FOCUS_CHECK_INTERVAL, FOCUS_GIVE_UP_TICKS,
+        centered_position, primary_monitor_rect, should_hide_on_blur, should_request_focus,
+        should_retry_focus, MonitorRect, BLUR_GRACE, FOCUS_CHECK_INTERVAL, FOCUS_GIVE_UP_TICKS,
     };
 
     #[test]
@@ -497,6 +635,47 @@ mod tests {
     #[test]
     fn keeps_the_window_origin_when_it_is_larger_than_the_work_area() {
         assert_eq!(centered_position(100, 50, 300, 200, 440, 560), (100, 50));
+    }
+
+    #[test]
+    fn finds_the_primary_monitor_when_the_secondary_is_at_the_origin() {
+        let secondary = MonitorRect {
+            x: 0,
+            y: 751,
+            width: 1920,
+            height: 1200,
+            primary: false,
+        };
+        let primary = MonitorRect {
+            x: 1920,
+            y: 0,
+            width: 3440,
+            height: 1440,
+            primary: true,
+        };
+
+        assert_eq!(primary_monitor_rect(&[secondary, primary]), Some(primary));
+    }
+
+    #[test]
+    fn does_not_assume_the_monitor_at_the_origin_is_primary() {
+        let secondary = MonitorRect {
+            x: 0,
+            y: 751,
+            width: 1920,
+            height: 1200,
+            primary: false,
+        };
+
+        assert_eq!(primary_monitor_rect(&[secondary]), None);
+    }
+
+    #[test]
+    fn centers_on_a_primary_monitor_to_the_right_of_the_secondary() {
+        assert_eq!(
+            centered_position(1920, 0, 3440, 1440, 440, 560),
+            (3420, 440)
+        );
     }
 
     #[test]

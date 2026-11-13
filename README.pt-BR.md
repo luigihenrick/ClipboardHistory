@@ -2,7 +2,7 @@
 
 # ClipHistory
 
-[![Testes](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/ci.yml?branch=main&label=testes&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/ci.yml)
+[![Testes](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?event=push&label=testes&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
 [![Release](https://img.shields.io/github/actions/workflow/status/luigihenrick/ClipboardHistory/release.yml?event=push&label=release&logo=github)](https://github.com/luigihenrick/ClipboardHistory/actions/workflows/release.yml)
 [![Última versão](https://img.shields.io/github/v/release/luigihenrick/ClipboardHistory?display_name=tag&sort=semver&label=%C3%BAltima%20vers%C3%A3o&logo=github)](https://github.com/luigihenrick/ClipboardHistory/releases/latest)
 [![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-000000.svg)](LICENSE)
@@ -23,7 +23,7 @@ dados da área de transferência nunca são enviados.
 - **Atalho global configurável** (padrão `Ctrl+Shift+V` / `⌘ ⇧ V`), funcionando com o app em
   segundo plano.
 - **Popup rápido** com busca instantânea, navegação por teclado e cópia com `Enter`.
-- **Popup centralizado** na área útil do monitor sob o cursor.
+- **Popup centralizado** na área útil do monitor principal.
 - **Itens fixados** que não são removidos ao limpar o histórico nem ao atingir o limite. Eles
   mostram um ícone de pin sempre visível, seguem a ordem normal de uso e vão para o topo quando
   copiados, como qualquer outro item.
@@ -169,12 +169,6 @@ http://localhost:1420/?window=settings
 
 Esse modo existe apenas em desenvolvimento (`import.meta.env.DEV`) e não entra no app final.
 
-### CI
-
-O workflow em `.github/workflows/ci.yml` roda os testes/type-check/build do frontend e o
-`cargo check`/`cargo test` do backend em Windows, Linux e macOS a cada push/PR — útil para
-validar o Rust sem precisar das dependências de sistema na máquina local.
-
 ### Testes
 
 ```bash
@@ -184,10 +178,11 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 
 A suíte cobre os dicionários de tradução (paridade de chaves/placeholders), formatação de datas,
 parsing/formatação de atalhos, a política de retentativa de foco, decisões de blur/foco, o
-roteamento de `--toggle`, centralização do popup, validação de versão/URL de atualização, a
-configuração da janela do popup (`focus`, `center`, `visible`) e a configuração de
-release/versão. O CI também compila o projeto, o que evita regressões como o erro de tempo de
-vida do closure no `setup`.
+roteamento de `--toggle`, centralização do popup no monitor principal, validação de versão/URL de
+atualização, a configuração da janela do popup (`focus`, `center`, `visible`) e a configuração
+de release/versão. O workflow de release roda esses testes e o type-check/build do
+frontend antes de criar a release, o que evita regressões como o erro de tempo de vida do closure
+no `setup`.
 
 ### Publicando uma release
 
@@ -307,10 +302,10 @@ Se a saída for `wayland`, use uma destas alternativas:
    escolha “Zorin Desktop on Xorg” na tela de login).
 
 > O Wayland nativo não permite que apps posicionem janelas top-level, e os window managers
-> X11/XWayland podem sobrescrever a posição de qualquer forma, então o popup é sempre exibido
-> **centralizado na tela**. Quando o XWayland está disponível o ClipHistory o usa
-> automaticamente; para forçar Wayland nativo, inicie com `GDK_BACKEND=wayland` (aí o compositor
-> controla a posição).
+> X11/XWayland podem sobrescrever a posição de qualquer forma. O ClipHistory centraliza o popup
+> no monitor principal; no Wayland nativo o compositor tem a palavra final. Quando o XWayland
+> está disponível o ClipHistory o usa automaticamente; para forçar Wayland nativo, inicie com
+> `GDK_BACKEND=wayland`.
 >
 > Se o log de inicialização mostrar `gdk_backend=Some("wayland")`, há um
 > `GDK_BACKEND=wayland` explícito no ambiente — remova-o (`unset GDK_BACKEND`) e reinicie. Se o
@@ -401,8 +396,9 @@ O banco é `cliphistory.db`; as imagens ficam em `images/`.
   Algumas áreas de trabalho precisam do pacote `libayatana-appindicator3` para o ícone aparecer.
   Em layouts com *dead keys* (por exemplo, ABNT2), a gravação de atalhos como Ctrl + acento
   grave pode ser descartada pela camada de janelas — use o campo de atalho manual nas
-  Configurações. No Wayland o popup é sempre exibido **centralizado na tela**; quando o XWayland
-  está disponível o app o usa automaticamente, e `GDK_BACKEND=wayland` força Wayland nativo.
+  Configurações. No Wayland nativo o compositor controla o posicionamento do popup; quando o
+  XWayland está disponível o app o usa automaticamente, e `GDK_BACKEND=wayland` força Wayland
+  nativo.
 - **Windows:** o popup não aparece na barra de tarefas (`skipTaskbar`), apenas na bandeja. A
   colagem automática não consegue injetar teclas em janelas elevadas (executadas como
   administrador) a menos que o ClipHistory também esteja elevado.
@@ -499,7 +495,7 @@ O banco é `cliphistory.db`; as imagens ficam em `images/`.
 - Criptografia do banco e modo "não guardar senhas".
 - Mais idiomas na interface.
 - Migrações versionadas do banco e escrita atômica das configurações.
-- Testes de integração do backend e CI de build multiplataforma.
+- Testes de integração do backend.
 
 ## Licença
 
