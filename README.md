@@ -30,8 +30,8 @@ only network request is the update check against GitHub; clipboard data is never
 - **Launch at login** (autostart) configurable.
 - **Tray icon** with access to the history, settings and quit.
 - **Single instance**: launching the app again just shows the popup.
-- **Update check**: at startup, checks GitHub for a newer release and shows the version and
-  release notes in Settings, with a button to open the GitHub release.
+- **Update check**: at startup or on demand from Settings, checks GitHub for a newer release and
+  shows the version and release notes, with a button to open the GitHub release.
 - English and Portuguese (pt-BR) interface — English is the default — light/dark theme that
   follows the system, and frameless window.
 
@@ -176,10 +176,11 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 
 The suite covers the translation dictionaries (key/placeholder parity), date formatting, shortcut
 parsing/formatting, the focus-retry policy, blur/hide decisions, `--toggle` routing, popup
-centering on the primary monitor, update version/URL validation, the popup window
-configuration (`focus`, `center`, `visible`) and the release/version configuration. The release
-workflow runs these tests and the frontend type-check/build before creating a release, which
-prevents regressions such as a `'static` closure lifetime error from reaching a build.
+centering on the primary monitor, search-field focus scheduling, update version/URL validation,
+the popup window configuration (`focus`, `center`, `visible`) and the release/version
+configuration. The release workflow runs these tests and the frontend type-check/build before
+creating a release, which prevents regressions such as a `'static` closure lifetime error from
+reaching a build.
 
 ### Releasing
 
@@ -378,7 +379,7 @@ The database is `cliphistory.db`; images live in `images/`.
 
 > **Privacy:** the history is stored in plain text on your disk. Avoid copying passwords and
 > sensitive data, or clear the history afterwards. There is no sync and clipboard data is never
-> sent anywhere. The only network request is the startup update check against GitHub.
+> sent anywhere. The only network request is the update check against GitHub.
 
 ## Shortcuts and platform notes
 

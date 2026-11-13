@@ -34,7 +34,7 @@ pub(crate) fn is_newer(remote: &str, current: &str) -> bool {
     }
 }
 
-fn fetch_latest_release(current: &str) -> Option<GitHubRelease> {
+fn fetch_latest_release(current: &str) -> Result<GitHubRelease, String> {
     let user_agent = format!("ClipHistory/{current}");
 
     let output = std::process::Command::new("curl")
@@ -52,33 +52,33 @@ fn fetch_latest_release(current: &str) -> Option<GitHubRelease> {
             LATEST_RELEASE_API,
         ])
         .output()
-        .ok()?;
+        .map_err(|error| format!("Failed to run curl: {error}"))?;
 
     if !output.status.success() {
-        return None;
+        return Err(format!("Update check failed with status {}", output.status));
     }
 
-    serde_json::from_slice(&output.stdout).ok()
+    serde_json::from_slice(&output.stdout)
+        .map_err(|error| format!("Invalid update response: {error}"))
 }
 
-/// Checks GitHub for a release newer than the running version. Network failures are silent:
-/// the update card is simply not shown.
-pub fn check_for_update(current: &str) -> Option<UpdateInfo> {
+/// Checks GitHub for a release newer than the running version.
+pub fn check_for_update(current: &str) -> Result<Option<UpdateInfo>, String> {
     let release = fetch_latest_release(current)?;
 
     if !is_newer(&release.tag_name, current) {
-        return None;
+        return Ok(None);
     }
 
     let version = release.tag_name;
     let name = release.name.unwrap_or_else(|| version.clone());
 
-    Some(UpdateInfo {
+    Ok(Some(UpdateInfo {
         version,
         name,
         notes: release.body.unwrap_or_default(),
         url: release.html_url,
-    })
+    }))
 }
 
 /// Runs the update check in the background at startup and notifies the frontend when done.
@@ -86,7 +86,7 @@ pub fn spawn_check(app: AppHandle) {
     let current = app.package_info().version.to_string();
 
     std::thread::spawn(move || {
-        let Some(update) = check_for_update(&current) else {
+        let Ok(Some(update)) = check_for_update(&current) else {
             return;
         };
 

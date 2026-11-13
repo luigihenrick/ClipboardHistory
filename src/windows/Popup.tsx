@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {
   ClipboardIcon,
@@ -11,6 +11,7 @@ import {
 } from "../components/Icons";
 import { useI18n } from "../i18n";
 import { isLanguage } from "../i18n/types";
+import { focusSearchField } from "../lib/focus";
 import { previewText, relativeTime } from "../lib/format";
 import { onEvent } from "../lib/events";
 import * as api from "../lib/ipc";
@@ -157,9 +158,21 @@ export default function Popup() {
   }, []);
 
   const focusSearch = useCallback(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
+    focusSearchField(inputRef.current);
   }, []);
+
+  useLayoutEffect(() => {
+    focusSearch();
+  }, [focusSearch]);
+
+  useEffect(() => {
+    // The webview window can finish mapping after `popup://shown`; refocus when it gains focus
+    // so typing is never delayed by the window manager.
+    const onWindowFocus = () => focusSearch();
+    window.addEventListener("focus", onWindowFocus);
+
+    return () => window.removeEventListener("focus", onWindowFocus);
+  }, [focusSearch]);
 
   useEffect(() => {
     // Debounce search so typing does not trigger an IPC round-trip per keystroke.
@@ -201,9 +214,6 @@ export default function Popup() {
         unlisten = fn;
       }
     });
-
-    // The window is created hidden, but focusing the field on mount keeps dev tools honest.
-    focusSearch();
 
     return () => {
       disposed = true;
@@ -368,6 +378,7 @@ export default function Popup() {
           placeholder={t("popup.searchPlaceholder")}
           spellCheck={false}
           autoComplete="off"
+          autoFocus
           onChange={(event) => {
             setSearch(event.target.value);
             setSelected(0);

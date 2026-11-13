@@ -302,6 +302,7 @@ pub fn run() {
             commands::get_entries,
             commands::get_app_info,
             commands::get_update,
+            commands::check_for_updates,
             commands::open_external_url,
             commands::get_settings,
             commands::get_stats,

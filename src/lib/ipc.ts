@@ -37,24 +37,30 @@ export function getAppInfo() {
   );
 }
 
-export function getUpdate() {
-  return call<UpdateInfo | null>("get_update", {}, async () => {
-    // In the browser preview, `?update=1` shows the update card for layout testing.
-    if (new URLSearchParams(window.location.search).has("update")) {
-      const [major, minor, patch] = __APP_VERSION__.split("-")[0].split(".").map(Number);
-      const previewVersion = `${major}.${minor}.${patch + 1}`;
-
-      return {
-        version: `v${previewVersion}`,
-        name: `ClipHistory ${previewVersion}`,
-        notes:
-          "### What's new\n\n- Image previews in the clipboard list\n- More reliable auto-paste\n- Faster popup opening\n\n[MIT License](https://github.com/luigihenrick/ClipboardHistory/blob/main/LICENSE)",
-        url: "https://github.com/luigihenrick/ClipboardHistory/releases/latest",
-      };
-    }
-
+function previewUpdate(): UpdateInfo | null {
+  // In the browser preview, `?update=1` shows the update card for layout testing.
+  if (!new URLSearchParams(window.location.search).has("update")) {
     return null;
-  });
+  }
+
+  const [major, minor, patch] = __APP_VERSION__.split("-")[0].split(".").map(Number);
+  const previewVersion = `${major}.${minor}.${patch + 1}`;
+
+  return {
+    version: `v${previewVersion}`,
+    name: `ClipHistory ${previewVersion}`,
+    notes:
+      "### What's new\n\n- Image previews in the clipboard list\n- More reliable auto-paste\n- Faster popup opening\n\n[MIT License](https://github.com/luigihenrick/ClipboardHistory/blob/main/LICENSE)",
+    url: "https://github.com/luigihenrick/ClipboardHistory/releases/latest",
+  };
+}
+
+export function getUpdate() {
+  return call<UpdateInfo | null>("get_update", {}, async () => previewUpdate());
+}
+
+export function checkForUpdates() {
+  return call<UpdateInfo | null>("check_for_updates", {}, async () => previewUpdate());
 }
 
 export function openExternal(url: string) {

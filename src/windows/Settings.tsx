@@ -29,6 +29,7 @@ export default function Settings() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [version, setVersion] = useState("");
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
 
   const loadStats = useCallback(async () => {
     try {
@@ -115,6 +116,26 @@ export default function Settings() {
       unlisten?.();
     };
   }, []);
+
+  const checkForUpdates = useCallback(async () => {
+    if (checkingUpdates) return;
+
+    setCheckingUpdates(true);
+    setStatus(null);
+
+    try {
+      const available = await api.checkForUpdates();
+      setUpdateInfo(available);
+      if (!available) {
+        setStatus({ kind: "success", message: t("settings.upToDate") });
+      }
+    } catch (error) {
+      console.error("cliphistory: failed to check for updates", error);
+      setStatus({ kind: "error", message: t("settings.updateCheckFailed") });
+    } finally {
+      setCheckingUpdates(false);
+    }
+  }, [checkingUpdates, t]);
 
   const update = (patch: Partial<SettingsModel>) => {
     setStatus(null);
@@ -275,43 +296,55 @@ export default function Settings() {
       </header>
 
       <div className="settings-content">
-        {updateInfo && (
-          <section className="card update-card">
-            <div className="update-heading">
-              <div>
-                <h2>{t("settings.updateTitle")}</h2>
-                <p className="card-description">{t("settings.updateText")}</p>
-              </div>
-              <span className="update-version">{updateInfo.version}</span>
+        <section className={`card update-card${updateInfo ? " update-available" : ""}`}>
+          <div className="update-heading">
+            <div>
+              <h2>{updateInfo ? t("settings.updateTitle") : t("settings.updatesTitle")}</h2>
+              <p className="card-description">
+                {updateInfo ? t("settings.updateText") : t("settings.updatesText")}
+              </p>
             </div>
+            {updateInfo && <span className="update-version">{updateInfo.version}</span>}
+          </div>
 
-            {updateInfo.notes && (
-              <Suspense fallback={<pre className="update-notes">{updateInfo.notes}</pre>}>
-                <div className="update-notes">
-                  <Markdown
-                    components={{
-                      a: ({ href, children }) => (
-                        <a
-                          href={href}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            if (href?.startsWith("https://")) {
-                              void api.openExternal(href);
-                            }
-                          }}
-                        >
-                          {children}
-                        </a>
-                      ),
-                    }}
-                  >
-                    {updateInfo.notes}
-                  </Markdown>
-                </div>
-              </Suspense>
-            )}
+          {updateInfo?.notes && (
+            <Suspense fallback={<pre className="update-notes">{updateInfo.notes}</pre>}>
+              <div className="update-notes">
+                <Markdown
+                  components={{
+                    a: ({ href, children }) => (
+                      <a
+                        href={href}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          if (href?.startsWith("https://")) {
+                            void api.openExternal(href);
+                          }
+                        }}
+                      >
+                        {children}
+                      </a>
+                    ),
+                  }}
+                >
+                  {updateInfo.notes}
+                </Markdown>
+              </div>
+            </Suspense>
+          )}
 
-            <div className="update-actions">
+          <div className="update-actions">
+            <button
+              type="button"
+              className={`btn ${updateInfo ? "btn-ghost" : "btn-primary"}`}
+              disabled={checkingUpdates}
+              onClick={() => void checkForUpdates()}
+            >
+              {checkingUpdates
+                ? t("settings.checkingUpdates")
+                : t("settings.checkUpdates")}
+            </button>
+            {updateInfo && (
               <button
                 type="button"
                 className="btn btn-primary"
@@ -319,9 +352,9 @@ export default function Settings() {
               >
                 {t("settings.updateOpen")}
               </button>
-            </div>
-          </section>
-        )}
+            )}
+          </div>
+        </section>
 
         <section className="card">
           <div className="card-heading">

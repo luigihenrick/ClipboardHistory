@@ -1,9 +1,9 @@
 ### What's new
 
-- **Popup placement fixed**: the popup now always opens centered on the primary monitor. On
-  multi-monitor setups where a secondary monitor sits at the desktop origin, it no longer opens
-  on the secondary display. On X11/XWayland the primary monitor is detected through RandR, with
-  a clear log message when the platform does not report one.
+- **Faster search focus**: the search field now gets focus immediately when the popup opens and
+  again when the window gains focus, so typing is not delayed by the window manager.
+- **Manual update check**: Settings now has a **Check for updates** button, including checking
+  and up-to-date states, in addition to the automatic startup check.
 
 Local clipboard history for Windows, Linux and macOS. Clipboard data never leaves your computer;
 the only network request is the update check against GitHub.
@@ -48,10 +48,12 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 
 ### Novidades
 
-- **Posicionamento do popup corrigido**: o popup agora sempre abre centralizado no monitor
-  principal. Em configurações com vários monitores, quando um monitor secundário fica na origem
-  da área de trabalho, ele não abre mais nesse monitor. No X11/XWayland o monitor principal é
-  detectado via RandR, com uma mensagem de log clara quando a plataforma não o reporta.
+- **Foco mais rápido na busca**: o campo de busca agora recebe foco imediatamente quando o popup
+  abre e novamente quando a janela ganha foco, sem atrasar a digitação por causa do gerenciador de
+  janelas.
+- **Verificação manual de atualizações**: as Configurações agora têm um botão **Verificar
+  atualizações**, com estados de verificação e versão atualizada, além da checagem automática no
+  startup.
 
 ### Windows
 

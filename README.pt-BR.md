@@ -31,8 +31,9 @@ dados da área de transferência nunca são enviados.
 - **Iniciar com o sistema** (login/autostart) configurável.
 - **Ícone na bandeja** com acesso ao histórico, às configurações e à opção de sair.
 - **Instância única**: abrir o app de novo apenas mostra o popup.
-- **Verificação de atualizações**: no startup, consulta o GitHub por uma versão mais nova e
-  mostra a versão e as notas do release nas Configurações, com um botão para abrir o release.
+- **Verificação de atualizações**: no startup ou sob demanda nas Configurações, consulta o GitHub
+  por uma versão mais nova e mostra a versão e as notas do release, com um botão para abrir o
+  release.
 - Interface em inglês (padrão) e português; tema claro/escuro seguindo o sistema e janela sem
   moldura.
 
@@ -178,11 +179,11 @@ cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 
 A suíte cobre os dicionários de tradução (paridade de chaves/placeholders), formatação de datas,
 parsing/formatação de atalhos, a política de retentativa de foco, decisões de blur/foco, o
-roteamento de `--toggle`, centralização do popup no monitor principal, validação de versão/URL de
-atualização, a configuração da janela do popup (`focus`, `center`, `visible`) e a configuração
-de release/versão. O workflow de release roda esses testes e o type-check/build do
-frontend antes de criar a release, o que evita regressões como o erro de tempo de vida do closure
-no `setup`.
+roteamento de `--toggle`, centralização do popup no monitor principal, agendamento do foco no
+campo de busca, validação de versão/URL de atualização, a configuração da janela do popup
+(`focus`, `center`, `visible`) e a configuração de release/versão. O workflow de release roda
+esses testes e o type-check/build do frontend antes de criar a release, o que evita regressões
+como o erro de tempo de vida do closure no `setup`.
 
 ### Publicando uma release
 
@@ -384,7 +385,7 @@ O banco é `cliphistory.db`; as imagens ficam em `images/`.
 > **Privacidade:** o histórico é salvo em texto claro no seu disco. Evite copiar senhas e dados
 > sensíveis, ou limpe o histórico depois. Não há sincronização e os dados da área de
 > transferência nunca são enviados. A única requisição de rede é a verificação de atualizações
-> no startup.
+> no GitHub.
 
 ## Atalhos e detalhes de plataforma
 
