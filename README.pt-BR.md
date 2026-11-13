@@ -191,17 +191,26 @@ uma tag começando com `v` é enviada, ou manualmente em **Actions → Release �
 
 Para publicar uma versão:
 
-1. Atualize a versão em `package.json` e `src-tauri/tauri.conf.json`.
+1. Atualize `.github/release-notes.md` e a versão:
+
+   ```bash
+   npm run version:bump -- patch   # ou: npm run version:bump -- 1.3.0
+   ```
+
+   Isso atualiza apenas `package.json` e `package-lock.json`. O Tauri lê a versão diretamente
+   de `package.json`; nenhum outro arquivo de versão precisa ser editado. A versão do pacote
+   Cargo é intencionalmente estática.
 2. Faça o commit, crie a tag e envie:
 
    ```bash
+   version=$(node -p "require('./package.json').version")
    git add -A
-   git commit -m "Release v1.2.0"
-   git tag v1.2.0
+   git commit -m "Release v$version"
+   git tag "v$version"
    git push origin main --tags
    ```
 
-O workflow confere se a tag corresponde à versão em `src-tauri/tauri.conf.json`, compila Linux
+O workflow confere se a tag corresponde à versão em `package.json`, compila Linux
 (AppImage, `.deb`, `.rpm`), Windows (`.msi` e `-setup.exe`) e macOS (`.dmg` universal), envia os
 pacotes para um release em rascunho e só publica quando todas as plataformas terminam com
 sucesso. Tags com hífen (por exemplo, `v0.2.0-beta.1`) são marcadas como pré-release.

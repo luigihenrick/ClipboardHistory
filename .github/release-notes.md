@@ -1,22 +1,9 @@
-## ClipHistory 1.2.0
+### What's new
 
-### What's new in 1.2.0
-
-- **First popup centered reliably**: the position is calculated from the work area of the monitor
-  under the cursor and re-applied once after the window is mapped, so the window manager cannot
-  leave the first popup off-center.
-- **Pinned items are protected from deletion**: they survive clearing and retention limits, show
-  an always-visible pin icon, and follow the normal recency order; copying one moves it to the
-  top like any other item.
-- **Update check**: at startup, ClipHistory checks GitHub for a newer release and shows the
-  version and release notes in Settings, with a button to open the GitHub release.
-- **Auto-paste fixed**: after choosing an item, ClipHistory now restores focus to the window
-  that was active before the popup and then sends `Ctrl+V` / `⌘V`.
-- **Native Wayland**: when `ydotool` and `ydotoold` are installed and running, ClipHistory uses
-  them automatically to paste into native Wayland apps, with the correct syntax for both
-  ydotool 0.1.x and 1.x.
-- If auto-paste still fails on Wayland, configure `ydotool` or use an X11 session; the item
-  remains on the clipboard.
+- **Popup placement fixed**: the popup now always opens centered on the primary monitor. On
+  multi-monitor setups where a secondary monitor sits at the desktop origin, it no longer opens
+  on the secondary display. On X11/XWayland the primary monitor is detected through RandR, with
+  a clear log message when the platform does not report one.
 
 Local clipboard history for Windows, Linux and macOS. Clipboard data never leaves your computer;
 the only network request is the update check against GitHub.
@@ -59,24 +46,12 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 <details>
 <summary>Português (Brasil)</summary>
 
-### Novidades na 1.2.0
+### Novidades
 
-- **Primeiro popup centralizado de forma confiável**: a posição é calculada pela área útil do
-  monitor sob o cursor e reaplicada uma vez após a janela ser mapeada, para o window manager não
-  deixar o primeiro popup fora do centro.
-- **Itens fixados são protegidos contra exclusão**: sobrevivem à limpeza e ao limite de retenção,
-  mostram um ícone de pin sempre visível e seguem a ordem normal de uso; copiar um item fixado o
-  leva ao topo como qualquer outro.
-- **Verificação de atualizações**: no startup, o ClipHistory consulta o GitHub por uma versão
-  mais nova e mostra a versão e as notas do release nas Configurações, com um botão para abrir
-  o release no GitHub.
-- **Colagem automática corrigida**: ao escolher um item, o ClipHistory agora devolve o foco à
-  janela que estava ativa antes do popup e só então envia `Ctrl+V` / `⌘V`.
-- **Wayland nativo**: quando `ydotool` e `ydotoold` estão instalados e em execução, o ClipHistory
-  os usa automaticamente para colar em aplicativos Wayland nativos, com a sintaxe correta para
-  ydotool 0.1.x e 1.x.
-- Se a colagem automática ainda falhar no Wayland, configure o `ydotool` ou use uma sessão X11;
-  o item continua na área de transferência.
+- **Posicionamento do popup corrigido**: o popup agora sempre abre centralizado no monitor
+  principal. Em configurações com vários monitores, quando um monitor secundário fica na origem
+  da área de trabalho, ele não abre mais nesse monitor. No X11/XWayland o monitor principal é
+  detectado via RandR, com uma mensagem de log clara quando a plataforma não o reporta.
 
 ### Windows
 

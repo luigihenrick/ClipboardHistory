@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (for example, v1.2.0)"
+        description: "Release tag (for example, v1.2.1)"
         required: true
         type: string
 
@@ -95,7 +95,7 @@ jobs:
 
           tag="${RELEASE_TAG}"
           if [[ -z "$tag" ]]; then
-            echo "::error::No release tag. Pass a tag such as v1.2.0."
+            echo "::error::No release tag. Pass a tag such as v1.2.1."
             exit 1
           fi
 
@@ -104,10 +104,10 @@ jobs:
             exit 1
           fi
 
-          version=$(jq -r .version src-tauri/tauri.conf.json)
+          version=$(jq -r .version package.json)
           if [[ "${tag#v}" != "$version" ]]; then
-            echo "::error::Tag $tag does not match src-tauri/tauri.conf.json version $version."
-            echo "::error::Bump the version and commit it before pushing the tag."
+            echo "::error::Tag $tag does not match package.json version $version."
+            echo "::error::Run 'npm run version:bump' and commit it before pushing the tag."
             exit 1
           fi
 
@@ -119,6 +119,16 @@ jobs:
           fi
 
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## ClipHistory ${RELEASE_TAG#v}"
+            echo
+            cat .github/release-notes.md
+          } > "$RUNNER_TEMP/cliphistory-release-notes.md"
 
       - name: Create or reuse draft release
         id: release
@@ -141,10 +151,10 @@ jobs:
 
           if [[ -n "$release_id" ]]; then
             echo "Reusing release $release_id for $tag."
-            gh release edit "$tag" --notes-file .github/release-notes.md
+            gh release edit "$tag" --notes-file "$RUNNER_TEMP/cliphistory-release-notes.md"
           else
             echo "Creating draft release for $tag..."
-            body=$(cat .github/release-notes.md)
+            body=$(cat "$RUNNER_TEMP/cliphistory-release-notes.md")
 
             # Create through the API so the numeric id comes back in the response.
             # target_commitish is ignored when the tag already exists.

@@ -7,7 +7,7 @@ const LATEST_RELEASE_API: &str =
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
-    /// Release tag, for example `v1.2.0`.
+    /// Release tag, for example `v1.2.1`.
     pub version: String,
     pub name: String,
     pub notes: String,
@@ -34,8 +34,7 @@ pub(crate) fn is_newer(remote: &str, current: &str) -> bool {
     }
 }
 
-fn fetch_latest_release() -> Option<GitHubRelease> {
-    let current = env!("CARGO_PKG_VERSION");
+fn fetch_latest_release(current: &str) -> Option<GitHubRelease> {
     let user_agent = format!("ClipHistory/{current}");
 
     let output = std::process::Command::new("curl")
@@ -64,9 +63,8 @@ fn fetch_latest_release() -> Option<GitHubRelease> {
 
 /// Checks GitHub for a release newer than the running version. Network failures are silent:
 /// the update card is simply not shown.
-pub fn check_for_update() -> Option<UpdateInfo> {
-    let release = fetch_latest_release()?;
-    let current = env!("CARGO_PKG_VERSION");
+pub fn check_for_update(current: &str) -> Option<UpdateInfo> {
+    let release = fetch_latest_release(current)?;
 
     if !is_newer(&release.tag_name, current) {
         return None;
@@ -85,8 +83,10 @@ pub fn check_for_update() -> Option<UpdateInfo> {
 
 /// Runs the update check in the background at startup and notifies the frontend when done.
 pub fn spawn_check(app: AppHandle) {
+    let current = app.package_info().version.to_string();
+
     std::thread::spawn(move || {
-        let Some(update) = check_for_update() else {
+        let Some(update) = check_for_update(&current) else {
             return;
         };
 

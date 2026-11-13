@@ -1,6 +1,8 @@
 [package]
 name = "cliphistory"
-version = "1.2.0"
+# The app version lives in ../package.json and is read by tauri.conf.json.
+# This crate is not published, so the Cargo package version stays static.
+version = "0.0.0"
 description = "Histórico de área de transferência multiplataforma"
 authors = ["Luigi"]
 edition = "2021"

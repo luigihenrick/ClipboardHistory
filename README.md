@@ -188,17 +188,26 @@ starting with `v` is pushed, or manually via **Actions → Release → Run workf
 
 To release a version:
 
-1. Bump the version in both `package.json` and `src-tauri/tauri.conf.json`.
+1. Update `.github/release-notes.md` and bump the version:
+
+   ```bash
+   npm run version:bump -- patch   # or: npm run version:bump -- 1.3.0
+   ```
+
+   This only updates `package.json` and `package-lock.json`. Tauri reads the version directly
+   from `package.json`; no other version file needs to be edited. The Cargo package version is
+   intentionally static.
 2. Commit, tag and push:
 
    ```bash
+   version=$(node -p "require('./package.json').version")
    git add -A
-   git commit -m "Release v1.2.0"
-   git tag v1.2.0
+   git commit -m "Release v$version"
+   git tag "v$version"
    git push origin main --tags
    ```
 
-The workflow checks that the tag matches `src-tauri/tauri.conf.json`, builds Linux (AppImage,
+The workflow checks that the tag matches `package.json`, builds Linux (AppImage,
 `.deb`, `.rpm`), Windows (`.msi` and `-setup.exe`) and macOS (universal `.dmg`), uploads the
 bundles to a draft release and publishes it only after every platform succeeds. Tags containing
 a hyphen (for example, `v0.2.0-beta.1`) are marked as prereleases.

@@ -41,12 +41,15 @@ export function getUpdate() {
   return call<UpdateInfo | null>("get_update", {}, async () => {
     // In the browser preview, `?update=1` shows the update card for layout testing.
     if (new URLSearchParams(window.location.search).has("update")) {
+      const [major, minor, patch] = __APP_VERSION__.split("-")[0].split(".").map(Number);
+      const previewVersion = `${major}.${minor}.${patch + 1}`;
+
       return {
-        version: "v1.2.0",
-        name: "ClipHistory 1.2.0",
+        version: `v${previewVersion}`,
+        name: `ClipHistory ${previewVersion}`,
         notes:
           "### What's new\n\n- Image previews in the clipboard list\n- More reliable auto-paste\n- Faster popup opening\n\n[MIT License](https://github.com/luigihenrick/ClipboardHistory/blob/main/LICENSE)",
-        url: "https://github.com/luigihenrick/ClipboardHistory/releases/tag/v1.2.0",
+        url: "https://github.com/luigihenrick/ClipboardHistory/releases/latest",
       };
     }
 

@@ -373,13 +373,19 @@ mod tests {
     }
 
     #[test]
-    fn package_and_tauri_versions_match() {
+    fn version_is_centralized_in_package_json() {
         let tauri: serde_json::Value =
             serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
         let package: serde_json::Value =
             serde_json::from_str(include_str!("../../package.json")).unwrap();
 
-        assert_eq!(package["version"], tauri["version"]);
+        assert_eq!(tauri["version"].as_str(), Some("../package.json"));
+
+        let version = package["version"].as_str().expect("package.json version");
+        assert!(
+            semver::Version::parse(version).is_ok(),
+            "package.json version must be valid semver, got {version:?}"
+        );
     }
 
     #[test]
