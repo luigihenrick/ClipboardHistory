@@ -9,7 +9,13 @@ import { isLanguage } from "../i18n/types";
 import { onEvent } from "../lib/events";
 import * as api from "../lib/ipc";
 import { isMac } from "../lib/shortcut";
-import type { AppInfo, Settings as SettingsModel, Stats, UpdateInfo } from "../types";
+import type {
+  AppInfo,
+  Diagnostics,
+  Settings as SettingsModel,
+  Stats,
+  UpdateInfo,
+} from "../types";
 
 const Markdown = lazy(() => import("react-markdown"));
 
@@ -30,6 +36,8 @@ export default function Settings() {
   const [version, setVersion] = useState("");
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
+  const [diagnosticsLoading, setDiagnosticsLoading] = useState(false);
 
   const loadStats = useCallback(async () => {
     try {
@@ -38,6 +46,21 @@ export default function Settings() {
       console.error("cliphistory: failed to load stats", error);
     }
   }, []);
+
+  const loadDiagnostics = useCallback(async () => {
+    setDiagnosticsLoading(true);
+    try {
+      setDiagnostics(await api.getDiagnostics());
+    } catch (error) {
+      console.error("cliphistory: failed to load diagnostics", error);
+    } finally {
+      setDiagnosticsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDiagnostics();
+  }, [loadDiagnostics]);
 
   useEffect(() => {
     let disposed = false;
@@ -199,6 +222,25 @@ export default function Settings() {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const copyDiagnostics = async () => {
+    try {
+      await api.copyDiagnostics();
+      setStatus({ kind: "success", message: t("settings.diagnosticsCopied") });
+    } catch (error) {
+      console.error("cliphistory: failed to copy diagnostics", error);
+      setStatus({ kind: "error", message: t("settings.diagnosticsCopyFailed") });
+    }
+  };
+
+  const openLogs = async () => {
+    try {
+      await api.openLogsFolder();
+    } catch (error) {
+      console.error("cliphistory: failed to open logs", error);
+      setStatus({ kind: "error", message: t("settings.diagnosticsLogsFailed") });
     }
   };
 
@@ -553,6 +595,59 @@ export default function Settings() {
               </button>
             </div>
           </div>
+        </section>
+
+        <section className="card diagnostics-card">
+          <details>
+            <summary>
+              <span className="diagnostics-title">{t("settings.diagnosticsTitle")}</span>
+              <span className="row-desc">{t("settings.diagnosticsDescription")}</span>
+            </summary>
+
+            <div className="diagnostics-body">
+              {diagnostics ? (
+                <pre className="diagnostics-output">{diagnostics.summary}</pre>
+              ) : (
+                <p className="card-description">
+                  {diagnosticsLoading
+                    ? t("settings.diagnosticsLoading")
+                    : t("settings.diagnosticsUnavailable")}
+                </p>
+              )}
+
+              {diagnostics?.recentLogs && (
+                <details className="diagnostics-logs">
+                  <summary>{t("settings.diagnosticsRecentLogs")}</summary>
+                  <pre className="diagnostics-output">{diagnostics.recentLogs}</pre>
+                </details>
+              )}
+
+              <div className="diagnostics-actions">
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={diagnosticsLoading}
+                  onClick={() => void loadDiagnostics()}
+                >
+                  {t("settings.diagnosticsRefresh")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => void copyDiagnostics()}
+                >
+                  {t("settings.diagnosticsCopy")}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => void openLogs()}
+                >
+                  {t("settings.diagnosticsOpenLogs")}
+                </button>
+              </div>
+            </div>
+          </details>
         </section>
       </div>
 

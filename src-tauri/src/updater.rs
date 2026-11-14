@@ -86,9 +86,16 @@ pub fn spawn_check(app: AppHandle) {
     let current = app.package_info().version.to_string();
 
     std::thread::spawn(move || {
-        let Ok(Some(update)) = check_for_update(&current) else {
-            return;
+        let update = match check_for_update(&current) {
+            Ok(Some(update)) => update,
+            Ok(None) => return,
+            Err(error) => {
+                crate::logging::warn(&format!("update check failed: {error}"));
+                return;
+            }
         };
+
+        crate::logging::info(&format!("update available: {}", update.version));
 
         if let Some(state) = app.try_state::<crate::AppState>() {
             if let Ok(mut slot) = state.available_update.lock() {
@@ -102,7 +109,38 @@ pub fn spawn_check(app: AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::is_newer;
+    use super::{is_newer, GitHubRelease};
+
+    #[test]
+    fn parses_a_github_release_payload() {
+        let release: GitHubRelease = serde_json::from_str(
+            r#"{
+                "tag_name": "v1.3.0",
+                "name": "ClipHistory 1.3.0",
+                "body": "Release notes",
+                "html_url": "https://github.com/luigihenrick/ClipboardHistory/releases/tag/v1.3.0"
+            }"#,
+        )
+        .unwrap();
+
+        assert_eq!(release.tag_name, "v1.3.0");
+        assert_eq!(release.name.as_deref(), Some("ClipHistory 1.3.0"));
+        assert_eq!(release.body.as_deref(), Some("Release notes"));
+    }
+
+    #[test]
+    fn accepts_a_release_without_optional_fields() {
+        let release: GitHubRelease = serde_json::from_str(
+            r#"{
+                "tag_name": "v1.3.0",
+                "html_url": "https://github.com/luigihenrick/ClipboardHistory/releases/tag/v1.3.0"
+            }"#,
+        )
+        .unwrap();
+
+        assert!(release.name.is_none());
+        assert!(release.body.is_none());
+    }
 
     #[test]
     fn detects_newer_versions() {

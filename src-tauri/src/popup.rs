@@ -478,6 +478,16 @@ fn spawn_focus_monitor(app: AppHandle) {
                 if !was_focused {
                     if let Some(state) = app.try_state::<crate::AppState>() {
                         state.popup_was_focused.store(true, Ordering::SeqCst);
+
+                        if let Ok(started_at) = state.popup_show_started_at.lock() {
+                            if let Some(started_at) = *started_at {
+                                let elapsed = started_at.elapsed().as_millis() as u64;
+                                if let Ok(mut timings) = state.popup_timings.lock() {
+                                    timings.window_focused_ms = Some(elapsed);
+                                }
+                                crate::logging::info(&format!("popup focused in {elapsed}ms"));
+                            }
+                        }
                     }
 
                     // Tell the webview that the native window actually got focus. This is more
@@ -546,8 +556,20 @@ pub fn show(app: &AppHandle) {
         return;
     };
 
-    #[cfg(debug_assertions)]
-    eprintln!("cliphistory: showing popup");
+    let show_started = Instant::now();
+    if let Some(state) = app.try_state::<crate::AppState>() {
+        if let Ok(mut timings) = state.popup_timings.lock() {
+            *timings = crate::diagnostics::PopupTimings {
+                shown_at_ms: Some(crate::diagnostics::now_ms()),
+                ..Default::default()
+            };
+        }
+        if let Ok(mut started_at) = state.popup_show_started_at.lock() {
+            *started_at = Some(show_started);
+        }
+    }
+
+    crate::logging::info("popup show requested");
 
     // Remember which app/window was active before the popup opens so auto-paste can return
     // focus there after hiding it.
@@ -581,8 +603,18 @@ pub fn show(app: &AppHandle) {
 
     let _ = window.unminimize();
     if let Err(error) = window.show() {
-        eprintln!("cliphistory: failed to show popup: {error}");
+        crate::logging::error(&format!("failed to show popup: {error}"));
     }
+
+    if let Some(state) = app.try_state::<crate::AppState>() {
+        if let Ok(mut timings) = state.popup_timings.lock() {
+            timings.window_shown_ms = Some(show_started.elapsed().as_millis() as u64);
+        }
+    }
+    crate::logging::info(&format!(
+        "window shown in {}ms",
+        show_started.elapsed().as_millis()
+    ));
 
     // The window manager may place the window while mapping it; apply the same position once
     // more and verify again shortly after the first frame.

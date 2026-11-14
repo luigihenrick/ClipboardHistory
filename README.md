@@ -32,6 +32,8 @@ only network request is the update check against GitHub; clipboard data is never
 - **Single instance**: launching the app again just shows the popup.
 - **Update check**: at startup or on demand from Settings, checks GitHub for a newer release and
   shows the version and release notes, with a button to open the GitHub release.
+- **Diagnostics**: system, monitor, database, update and popup-focus information, with recent logs
+  that can be copied or opened from Settings.
 - English and Portuguese (pt-BR) interface — English is the default — light/dark theme that
   follows the system, and frameless window.
 

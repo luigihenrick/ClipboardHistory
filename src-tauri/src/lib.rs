@@ -1,6 +1,8 @@
 mod clipboard_watcher;
 mod commands;
 mod db;
+mod diagnostics;
+mod logging;
 mod models;
 mod paste;
 mod popup;
@@ -27,6 +29,10 @@ pub struct AppState {
     pub previous_x11_window: Mutex<Option<u32>>,
     /// Latest release found by the startup update check.
     pub available_update: Mutex<Option<updater::UpdateInfo>>,
+    /// Last popup timing measurements shown by the diagnostics panel.
+    pub popup_timings: Mutex<diagnostics::PopupTimings>,
+    /// Start time of the current popup show, used for window/focus timing.
+    pub popup_show_started_at: Mutex<Option<Instant>>,
 }
 
 /// Returns true when the argument requests showing the popup at startup.
@@ -141,6 +147,7 @@ pub fn run() {
         )
         .setup(move |app| {
             let handle = app.handle().clone();
+            logging::init(&handle);
             let (loaded, first_run) = settings::load(&handle);
 
             #[cfg(debug_assertions)]
@@ -163,6 +170,8 @@ pub fn run() {
                 #[cfg(target_os = "linux")]
                 previous_x11_window: Mutex::new(None),
                 available_update: Mutex::new(None),
+                popup_timings: Mutex::new(diagnostics::PopupTimings::default()),
+                popup_show_started_at: Mutex::new(None),
             });
 
             // Configure the popup before its first map so GTK/WM focus-on-map is active even
@@ -315,6 +324,10 @@ pub fn run() {
             commands::get_entries,
             commands::get_app_info,
             commands::get_update,
+            commands::get_diagnostics,
+            commands::copy_diagnostics,
+            commands::open_logs_folder,
+            commands::report_search_focus,
             commands::open_external_url,
             commands::get_settings,
             commands::get_stats,

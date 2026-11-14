@@ -34,6 +34,8 @@ dados da área de transferência nunca são enviados.
 - **Verificação de atualizações**: no startup ou sob demanda nas Configurações, consulta o GitHub
   por uma versão mais nova e mostra a versão e as notas do release, com um botão para abrir o
   release.
+- **Diagnóstico**: informações do sistema, monitores, banco, atualização e tempos de foco do
+  popup, com logs recentes que podem ser copiados ou abertos nas Configurações.
 - Interface em inglês (padrão) e português; tema claro/escuro seguindo o sistema e janela sem
   moldura.
 

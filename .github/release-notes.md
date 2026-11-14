@@ -1,8 +1,11 @@
 ### What's new
 
-- **Search focus is now immediate**: the popup focuses both the native window and the WebKit
-  webview as soon as it is mapped, polls focus every 50 ms instead of 150 ms, and retries until the
-  search field is ready. AppImage cold starts no longer take 6–7 seconds to accept typing.
+- **Diagnostics panel**: Settings now includes system, monitor, database, update and popup-focus
+  information, plus recent logs that can be copied or opened directly. Focus timings show how long
+  the window, webview and search field take to become ready.
+- **Quality and test coverage**: added Rust tests for diagnostics, logging and update payloads,
+  formatting/clippy checks, an AppImage smoke test in CI, and release asset verification before
+  publishing.
 
 Local clipboard history for Windows, Linux and macOS. Clipboard data never leaves your computer;
 the only network request is the update check against GitHub.
@@ -47,10 +50,13 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 
 ### Novidades
 
-- **Foco na busca agora é imediato**: o popup foca a janela nativa e o webview do WebKit assim
-  que ele é mapeado, verifica o foco a cada 50 ms em vez de 150 ms e tenta novamente até o campo
-  de busca estar pronto. Cold starts do AppImage não levam mais 6–7 segundos para aceitar
-  digitação.
+- **Painel de diagnóstico**: as Configurações agora incluem informações do sistema, monitores,
+  banco, atualização e tempos de foco do popup, além de logs recentes que podem ser copiados ou
+  abertos diretamente. Os tempos mostram quanto a janela, o webview e o campo de busca levam para
+  ficar prontos.
+- **Qualidade e cobertura de testes**: adicionados testes Rust para diagnóstico, logging e payload
+  de atualização, verificação de formatação/clippy, teste de fumaça do AppImage no CI e validação
+  dos assets antes de publicar.
 
 ### Windows
 

@@ -46,3 +46,12 @@ export interface UpdateInfo {
   notes: string;
   url: string;
 }
+
+export interface Diagnostics {
+  appVersion: string;
+  tauriVersion: string;
+  summary: string;
+  recentLogs: string;
+  logDir: string;
+  generatedAtMs: number;
+}

@@ -1,6 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import type { AppInfo, Entry, Settings, Stats, UpdateInfo } from "../types";
+import type {
+  AppInfo,
+  Diagnostics,
+  Entry,
+  Settings,
+  Stats,
+  UpdateInfo,
+} from "../types";
 import { isTauri } from "./events";
 import * as mock from "./mock";
 import { checkForUpdate } from "./update";
@@ -62,6 +69,35 @@ export function getUpdate() {
 
 export function checkForUpdates() {
   return preview ? Promise.resolve(previewUpdate()) : checkForUpdate(__APP_VERSION__);
+}
+
+export function getDiagnostics() {
+  return call<Diagnostics>("get_diagnostics", {}, async () => ({
+    appVersion: __APP_VERSION__,
+    tauriVersion: "preview",
+    summary: `ClipHistory ${__APP_VERSION__}\nTauri preview\nOS: ${
+      typeof navigator !== "undefined" ? navigator.platform : "unknown"
+    }\nPreview mode`,
+    recentLogs: "",
+    logDir: "",
+    generatedAtMs: Date.now(),
+  }));
+}
+
+export function copyDiagnostics() {
+  return call<void>("copy_diagnostics", {}, async () => {
+    await navigator.clipboard?.writeText(
+      `ClipHistory ${__APP_VERSION__}\nPreview mode`,
+    );
+  });
+}
+
+export function openLogsFolder() {
+  return call<void>("open_logs_folder", {}, async () => undefined);
+}
+
+export function reportSearchFocus(elapsedMs: number) {
+  return call<void>("report_search_focus", { elapsedMs }, async () => undefined);
 }
 
 export function openExternal(url: string) {

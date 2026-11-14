@@ -73,6 +73,40 @@ pub fn get_update(state: State<'_, AppState>) -> Option<crate::updater::UpdateIn
         .and_then(|update| update.clone())
 }
 
+#[tauri::command]
+pub fn get_diagnostics(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> crate::diagnostics::Diagnostics {
+    crate::diagnostics::collect(&app, state.inner())
+}
+
+#[tauri::command]
+pub fn copy_diagnostics(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    let diagnostics = crate::diagnostics::collect(&app, state.inner());
+    let text = format!(
+        "{}\n\nRecent logs:\n{}",
+        diagnostics.summary, diagnostics.recent_logs
+    );
+
+    app.clipboard()
+        .write_text(text)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn open_logs_folder() -> Result<(), String> {
+    let dir = crate::logging::dir().ok_or_else(|| "Logs unavailable.".to_string())?;
+    open::that(dir).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn report_search_focus(state: State<'_, AppState>, elapsed_ms: u64) {
+    if let Ok(mut timings) = state.popup_timings.lock() {
+        timings.search_focused_ms = Some(elapsed_ms);
+    }
+}
+
 fn is_allowed_external_url(url: &str) -> bool {
     url.starts_with("https://")
         && !url

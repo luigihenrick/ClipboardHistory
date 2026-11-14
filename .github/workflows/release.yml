@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (for example, v1.2.1)"
+        description: "Release tag (for example, v1.3.0)"
         required: true
         type: string
 
@@ -40,6 +40,8 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -69,8 +71,14 @@ jobs:
       - name: Type-check and build frontend
         run: npm run build
 
+      - name: Rust format
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+
       - name: Rust check
         run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets
+
+      - name: Rust clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
 
       - name: Rust tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
@@ -95,7 +103,7 @@ jobs:
 
           tag="${RELEASE_TAG}"
           if [[ -z "$tag" ]]; then
-            echo "::error::No release tag. Pass a tag such as v1.2.1."
+            echo "::error::No release tag. Pass a tag such as v1.3.0."
             exit 1
           fi
 
@@ -266,9 +274,71 @@ jobs:
           retryAttempts: 2
           args: ${{ matrix.args }}
 
+      - name: Smoke test AppImage
+        if: matrix.platform == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y xvfb xdotool dbus-x11
+          app=$(find target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' | head -n1)
+          test -n "$app"
+          chmod +x "$app"
+
+          xvfb-run -a bash -c '
+            set -euo pipefail
+            app="$1"
+            WEBKIT_DISABLE_COMPOSITING_MODE=1 LIBGL_ALWAYS_SOFTWARE=1 \
+              dbus-run-session -- "$app" --appimage-extract-and-run --toggle > /tmp/cliphistory-smoke.log 2>&1 &
+            app_pid=$!
+            for _ in $(seq 1 30); do
+              if xdotool search --name ClipHistory >/dev/null 2>&1; then
+                echo "AppImage window appeared"
+                kill "$app_pid" || true
+                wait "$app_pid" || true
+                exit 0
+              fi
+              sleep 0.5
+            done
+            cat /tmp/cliphistory-smoke.log
+            kill "$app_pid" || true
+            wait "$app_pid" || true
+            exit 1
+          ' _ "$app"
+
+  verify-release:
+    name: Verify release assets
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_ID: ${{ needs.create-release.outputs.release_id }}
+    steps:
+      - name: Check required bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" --jq '.assets[].name')
+
+          require_asset() {
+            if ! grep -qiE "$1" <<< "$assets"; then
+              echo "::error::Missing release asset matching: $1"
+              echo "$assets"
+              exit 1
+            fi
+          }
+
+          require_asset '\.AppImage$'
+          require_asset '\.deb$'
+          require_asset '\.rpm$'
+          require_asset '\.msi$'
+          require_asset 'setup\.exe$'
+          require_asset '\.dmg$'
+
   publish-release:
     name: Publish release
-    needs: [create-release, build]
+    needs: [create-release, build, verify-release]
     runs-on: ubuntu-latest
     steps:
       - name: Publish draft release

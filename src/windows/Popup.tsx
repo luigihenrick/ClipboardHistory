@@ -141,6 +141,7 @@ export default function Popup() {
   const skipNextSearchRefresh = useRef(false);
   const stopFocusRetry = useRef<(() => void) | null>(null);
   const userInteracted = useRef(false);
+  const showStartedAt = useRef<number | null>(null);
 
   useEffect(() => {
     searchRef.current = search;
@@ -168,6 +169,16 @@ export default function Popup() {
 
     stopFocusRetry.current?.();
     stopFocusRetry.current = retrySearchFocus(inputFocusTarget(inputRef.current));
+  }, []);
+
+  const reportSearchFocus = useCallback(() => {
+    if (showStartedAt.current === null || document.activeElement !== inputRef.current) {
+      return;
+    }
+
+    const elapsed = Math.max(0, Math.round(performance.now() - showStartedAt.current));
+    showStartedAt.current = null;
+    void api.reportSearchFocus(elapsed);
   }, []);
 
   useLayoutEffect(() => {
@@ -251,11 +262,13 @@ export default function Popup() {
     void onEvent("popup://shown", () => {
       skipNextSearchRefresh.current = searchRef.current.length > 0;
       userInteracted.current = false;
+      showStartedAt.current = performance.now();
       setSearch("");
       setSelected(0);
       setLoading(true);
       void refresh("");
       startFocusRetry();
+      requestAnimationFrame(reportSearchFocus);
     }).then((fn) => {
       if (disposed) {
         fn();
@@ -268,7 +281,7 @@ export default function Popup() {
       disposed = true;
       unlisten?.();
     };
-  }, [applyLanguage, refresh, startFocusRetry]);
+  }, [applyLanguage, refresh, reportSearchFocus, startFocusRetry]);
 
   useEffect(() => {
     const unlisteners: Array<() => void> = [];
@@ -428,6 +441,7 @@ export default function Popup() {
           spellCheck={false}
           autoComplete="off"
           autoFocus
+          onFocus={reportSearchFocus}
           onChange={(event) => {
             setSearch(event.target.value);
             setSelected(0);
