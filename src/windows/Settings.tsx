@@ -95,7 +95,7 @@ export default function Settings() {
     let unlisten: (() => void) | undefined;
 
     void api
-      .getUpdate()
+      .checkForUpdates()
       .then((available) => {
         if (!disposed) setUpdateInfo(available);
       })

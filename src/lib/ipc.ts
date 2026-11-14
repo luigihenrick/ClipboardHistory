@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppInfo, Entry, Settings, Stats, UpdateInfo } from "../types";
 import { isTauri } from "./events";
 import * as mock from "./mock";
+import { checkForUpdate } from "./update";
 
 // Dev-only UI preview when running `npm run dev` in a normal browser.
 const preview = import.meta.env.DEV && !isTauri;
@@ -60,7 +61,7 @@ export function getUpdate() {
 }
 
 export function checkForUpdates() {
-  return call<UpdateInfo | null>("check_for_updates", {}, async () => previewUpdate());
+  return preview ? Promise.resolve(previewUpdate()) : checkForUpdate(__APP_VERSION__);
 }
 
 export function openExternal(url: string) {

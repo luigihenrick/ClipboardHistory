@@ -6,7 +6,9 @@ use tauri::{AppHandle, Emitter, Manager};
 pub(crate) const BLUR_GRACE: Duration = Duration::from_millis(600);
 
 const FOCUS_CHECK_INTERVAL: Duration = Duration::from_millis(150);
-const FOCUS_GIVE_UP_TICKS: u32 = 30;
+// AppImage cold starts can take several seconds to map and focus the window. Keep retrying
+// longer than the old 4.5s window so the first open still receives keyboard focus.
+const FOCUS_GIVE_UP_TICKS: u32 = 80;
 
 /// Returns true when a focus-loss event should hide the popup.
 ///
@@ -59,7 +61,32 @@ struct MonitorRect {
 /// Do not infer the primary monitor from the desktop origin: a secondary monitor can be at
 /// `(0, 0)` while the primary one is to its right.
 fn primary_monitor_rect(monitors: &[MonitorRect]) -> Option<MonitorRect> {
-    monitors.iter().copied().find(|monitor| monitor.primary)
+    monitors
+        .iter()
+        .copied()
+        .find(|monitor| monitor.primary && monitor.width > 0 && monitor.height > 0)
+}
+
+/// Rejects empty monitor/work-area rectangles. After a monitor wakes up, the platform can
+/// briefly report a zero width or height; using it would place the popup at the monitor's left
+/// edge instead of its center.
+fn usable_area(x: i32, y: i32, width: u32, height: u32) -> Option<(i32, i32, u32, u32)> {
+    (width > 0 && height > 0).then_some((x, y, width, height))
+}
+
+fn monitor_area(monitor: &tauri::Monitor) -> Option<(i32, i32, u32, u32)> {
+    let area = monitor.work_area();
+    usable_area(
+        area.position.x,
+        area.position.y,
+        area.size.width,
+        area.size.height,
+    )
+    .or_else(|| {
+        let position = monitor.position();
+        let size = monitor.size();
+        usable_area(position.x, position.y, size.width, size.height)
+    })
 }
 
 /// X11/XWayland exposes the primary output through RandR. This is more reliable than Tauri's
@@ -103,30 +130,18 @@ fn primary_monitor_area(window: &tauri::WebviewWindow) -> Option<(i32, i32, u32,
                     && monitor.size().width == primary.width
                     && monitor.size().height == primary.height
             }) {
-                let area = monitor.work_area();
-                return Some((
-                    area.position.x,
-                    area.position.y,
-                    area.size.width,
-                    area.size.height,
-                ));
+                if let Some(area) = monitor_area(monitor) {
+                    return Some(area);
+                }
             }
         }
 
         // RandR knows the primary monitor even if Tauri does not expose a matching monitor.
-        return Some((primary.x, primary.y, primary.width, primary.height));
+        return usable_area(primary.x, primary.y, primary.width, primary.height);
     }
 
     match window.primary_monitor() {
-        Ok(Some(monitor)) => {
-            let area = monitor.work_area();
-            Some((
-                area.position.x,
-                area.position.y,
-                area.size.width,
-                area.size.height,
-            ))
-        }
+        Ok(Some(monitor)) => monitor_area(&monitor),
         Ok(None) => None,
         Err(error) => {
             eprintln!("cliphistory: failed to query the primary monitor: {error}");
@@ -232,19 +247,23 @@ fn centered_position(
     (x, y)
 }
 
-/// Window managers can override the position while mapping the window. Re-apply the captured
-/// position once after the first frame so the popup is not placed somewhere else by the WM.
-fn schedule_position_retry(app: &AppHandle, position: Option<tauri::PhysicalPosition<i32>>) {
+/// Retries for several seconds because idle monitor wake-up and AppImage cold starts can make
+/// the window manager place the popup much later than the first mapped frame.
+const POSITION_RETRY_DELAYS: [u64; 6] = [100, 200, 400, 800, 1500, 2500];
+
+/// Window managers can override the position while mapping the window. Recompute and re-apply
+/// the target over a few seconds so a monitor that was asleep does not leave the popup at the
+/// left edge.
+fn schedule_position_retry(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
-        // Give the WM time to map/place the window, then correct it again if needed.
-        for delay in [120_u64, 220] {
+        for delay in POSITION_RETRY_DELAYS {
             std::thread::sleep(Duration::from_millis(delay));
             let app_for_main = app.clone();
-            let position = position.clone();
             let _ = app.run_on_main_thread(move || {
                 if let Some(window) = app_for_main.get_webview_window("popup") {
                     if window.is_visible().unwrap_or(false) {
+                        let position = popup_position(&window);
                         apply_popup_position(&window, position);
                     }
                 }
@@ -454,6 +473,10 @@ fn spawn_focus_monitor(app: AppHandle) {
                         state.popup_was_focused.store(true, Ordering::SeqCst);
                     }
 
+                    // Tell the webview that the native window actually got focus. This is more
+                    // reliable than the DOM focus event during slow AppImage cold starts.
+                    let _ = app.emit("popup://focused", ());
+
                     #[cfg(debug_assertions)]
                     eprintln!("cliphistory: popup focused");
                 }
@@ -557,7 +580,7 @@ pub fn show(app: &AppHandle) {
     // The window manager may place the window while mapping it; apply the same position once
     // more and verify again shortly after the first frame.
     apply_popup_position(&window, position.clone());
-    schedule_position_retry(app, position);
+    schedule_position_retry(app);
 
     focus_popup(app, &window);
     spawn_focus_monitor(app.clone());
@@ -608,7 +631,8 @@ mod tests {
 
     use super::{
         centered_position, primary_monitor_rect, should_hide_on_blur, should_request_focus,
-        should_retry_focus, MonitorRect, BLUR_GRACE, FOCUS_CHECK_INTERVAL, FOCUS_GIVE_UP_TICKS,
+        should_retry_focus, usable_area, MonitorRect, BLUR_GRACE, FOCUS_CHECK_INTERVAL,
+        FOCUS_GIVE_UP_TICKS, POSITION_RETRY_DELAYS,
     };
 
     #[test]
@@ -668,6 +692,39 @@ mod tests {
         };
 
         assert_eq!(primary_monitor_rect(&[secondary]), None);
+    }
+
+    #[test]
+    fn ignores_a_zero_sized_primary_monitor_after_wakeup() {
+        let waking_primary = MonitorRect {
+            x: 1920,
+            y: 0,
+            width: 0,
+            height: 1440,
+            primary: true,
+        };
+
+        assert_eq!(primary_monitor_rect(&[waking_primary]), None);
+    }
+
+    #[test]
+    fn rejects_zero_sized_work_areas() {
+        assert_eq!(usable_area(1920, 0, 0, 1440), None);
+        assert_eq!(usable_area(1920, 0, 3440, 0), None);
+        assert_eq!(
+            usable_area(1920, 0, 3440, 1440),
+            Some((1920, 0, 3440, 1440))
+        );
+    }
+
+    #[test]
+    fn position_retries_cover_idle_monitor_wakeup() {
+        let total: u64 = POSITION_RETRY_DELAYS.iter().sum();
+
+        assert!(
+            total >= 5_000,
+            "position retries should last at least 5s, got {total}ms"
+        );
     }
 
     #[test]
@@ -735,12 +792,12 @@ mod tests {
     }
 
     #[test]
-    fn focus_retries_cover_slow_window_mapping() {
+    fn focus_retries_cover_appimage_cold_starts() {
         let total = FOCUS_CHECK_INTERVAL * FOCUS_GIVE_UP_TICKS;
 
         assert!(
-            total >= Duration::from_secs(4),
-            "focus retries should last at least 4s, got {total:?}"
+            total >= Duration::from_secs(10),
+            "focus retries should last at least 10s, got {total:?}"
         );
     }
 }

@@ -11,7 +11,7 @@ import {
 } from "../components/Icons";
 import { useI18n } from "../i18n";
 import { isLanguage } from "../i18n/types";
-import { focusSearchField } from "../lib/focus";
+import { focusSearchField, inputFocusTarget, retrySearchFocus } from "../lib/focus";
 import { previewText, relativeTime } from "../lib/format";
 import { onEvent } from "../lib/events";
 import * as api from "../lib/ipc";
@@ -139,6 +139,8 @@ export default function Popup() {
   const requestId = useRef(0);
   const searchRef = useRef(search);
   const skipNextSearchRefresh = useRef(false);
+  const stopFocusRetry = useRef<(() => void) | null>(null);
+  const userInteracted = useRef(false);
 
   useEffect(() => {
     searchRef.current = search;
@@ -161,18 +163,64 @@ export default function Popup() {
     focusSearchField(inputRef.current);
   }, []);
 
+  const startFocusRetry = useCallback(() => {
+    if (userInteracted.current) return;
+
+    stopFocusRetry.current?.();
+    stopFocusRetry.current = retrySearchFocus(inputFocusTarget(inputRef.current));
+  }, []);
+
   useLayoutEffect(() => {
     focusSearch();
-  }, [focusSearch]);
+    if (document.hasFocus()) startFocusRetry();
+  }, [focusSearch, startFocusRetry]);
 
   useEffect(() => {
     // The webview window can finish mapping after `popup://shown`; refocus when it gains focus
     // so typing is never delayed by the window manager.
-    const onWindowFocus = () => focusSearch();
+    const onWindowFocus = () => startFocusRetry();
     window.addEventListener("focus", onWindowFocus);
 
     return () => window.removeEventListener("focus", onWindowFocus);
-  }, [focusSearch]);
+  }, [startFocusRetry]);
+
+  useEffect(() => {
+    // The native window can acquire focus before WebKit delivers the DOM focus event. The
+    // backend emits this event as soon as it observes the real window focus.
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+
+    void onEvent("popup://focused", () => {
+      startFocusRetry();
+    }).then((fn) => {
+      if (disposed) {
+        fn();
+      } else {
+        unlisten = fn;
+      }
+    });
+
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [startFocusRetry]);
+
+  useEffect(() => {
+    // Once the user clicks somewhere, stop pulling focus back to the search field.
+    const stop = () => {
+      userInteracted.current = true;
+      stopFocusRetry.current?.();
+      stopFocusRetry.current = null;
+    };
+
+    window.addEventListener("pointerdown", stop, true);
+
+    return () => {
+      window.removeEventListener("pointerdown", stop, true);
+      stop();
+    };
+  }, []);
 
   useEffect(() => {
     // Debounce search so typing does not trigger an IPC round-trip per keystroke.
@@ -202,11 +250,12 @@ export default function Popup() {
 
     void onEvent("popup://shown", () => {
       skipNextSearchRefresh.current = searchRef.current.length > 0;
+      userInteracted.current = false;
       setSearch("");
       setSelected(0);
       setLoading(true);
       void refresh("");
-      focusSearch();
+      startFocusRetry();
     }).then((fn) => {
       if (disposed) {
         fn();
@@ -219,7 +268,7 @@ export default function Popup() {
       disposed = true;
       unlisten?.();
     };
-  }, [applyLanguage, focusSearch, refresh]);
+  }, [applyLanguage, refresh, startFocusRetry]);
 
   useEffect(() => {
     const unlisteners: Array<() => void> = [];

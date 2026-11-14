@@ -1,9 +1,13 @@
 ### What's new
 
-- **Faster search focus**: the search field now gets focus immediately when the popup opens and
-  again when the window gains focus, so typing is not delayed by the window manager.
-- **Manual update check**: Settings now has a **Check for updates** button, including checking
-  and up-to-date states, in addition to the automatic startup check.
+- **Update check fixed**: the manual check no longer depends on the system `curl` binary; it uses
+  the webview HTTP stack, so it also works from the AppImage. Settings checks when opened and the
+  **Check for updates** button remains available for on-demand checks.
+- **AppImage focus fixed**: on cold starts the search field now receives focus reliably, using the
+  native window-focus event and retries that cover slow AppImage/WebKit startup.
+- **Popup position after idle fixed**: after a monitor wakes up, the popup no longer appears at
+  the left edge; zero-sized work areas are ignored and the centered position is reapplied for a
+  few seconds.
 
 Local clipboard history for Windows, Linux and macOS. Clipboard data never leaves your computer;
 the only network request is the update check against GitHub.
@@ -48,12 +52,15 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 
 ### Novidades
 
-- **Foco mais rápido na busca**: o campo de busca agora recebe foco imediatamente quando o popup
-  abre e novamente quando a janela ganha foco, sem atrasar a digitação por causa do gerenciador de
-  janelas.
-- **Verificação manual de atualizações**: as Configurações agora têm um botão **Verificar
-  atualizações**, com estados de verificação e versão atualizada, além da checagem automática no
-  startup.
+- **Verificação de atualizações corrigida**: a checagem manual não depende mais do binário
+  `curl` do sistema; usa a pilha HTTP do webview, então também funciona no AppImage. As
+  Configurações verificam ao abrir e o botão **Verificar atualizações** continua disponível.
+- **Foco corrigido no AppImage**: em cold starts o campo de busca agora recebe foco de forma
+  confiável, usando o evento nativo de foco da janela e retentativas que cobrem a inicialização
+  lenta do AppImage/WebKit.
+- **Posicionamento após inatividade corrigido**: depois que o monitor acorda, o popup não aparece
+  mais na lateral esquerda; áreas úteis com tamanho zero são ignoradas e a posição centralizada é
+  reaplicada por alguns segundos.
 
 ### Windows
 

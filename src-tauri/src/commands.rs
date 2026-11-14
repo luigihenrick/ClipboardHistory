@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_autostart::ManagerExt as AutostartExt;
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Modifiers, Shortcut};
@@ -71,30 +71,6 @@ pub fn get_update(state: State<'_, AppState>) -> Option<crate::updater::UpdateIn
         .lock()
         .ok()
         .and_then(|update| update.clone())
-}
-
-#[tauri::command]
-pub async fn check_for_updates(
-    app: AppHandle,
-) -> Result<Option<crate::updater::UpdateInfo>, String> {
-    let current = app.package_info().version.to_string();
-    let update = tauri::async_runtime::spawn_blocking(move || {
-        crate::updater::check_for_update(&current)
-    })
-    .await
-    .map_err(|error| error.to_string())??;
-
-    if let Some(state) = app.try_state::<AppState>() {
-        if let Ok(mut slot) = state.available_update.lock() {
-            *slot = update.clone();
-        }
-    }
-
-    if let Some(update) = &update {
-        let _ = app.emit("update://available", update.clone());
-    }
-
-    Ok(update)
 }
 
 fn is_allowed_external_url(url: &str) -> bool {
