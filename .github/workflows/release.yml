@@ -281,8 +281,12 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y xvfb xdotool dbus-x11
-          app=$(find target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' | head -n1)
-          test -n "$app"
+          app=$(find src-tauri/target/release/bundle -type f -name '*.AppImage' | head -n1)
+          if [[ -z "$app" ]]; then
+            echo "::error::No AppImage found under src-tauri/target/release/bundle"
+            find src-tauri/target/release/bundle -maxdepth 3 -type f || true
+            exit 1
+          fi
           chmod +x "$app"
 
           xvfb-run -a bash -c '
