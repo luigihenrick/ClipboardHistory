@@ -1,13 +1,8 @@
 ### What's new
 
-- **Update check fixed**: the manual check no longer depends on the system `curl` binary; it uses
-  the webview HTTP stack, so it also works from the AppImage. Settings checks when opened and the
-  **Check for updates** button remains available for on-demand checks.
-- **AppImage focus fixed**: on cold starts the search field now receives focus reliably, using the
-  native window-focus event and retries that cover slow AppImage/WebKit startup.
-- **Popup position after idle fixed**: after a monitor wakes up, the popup no longer appears at
-  the left edge; zero-sized work areas are ignored and the centered position is reapplied for a
-  few seconds.
+- **Search focus is now immediate**: the popup focuses both the native window and the WebKit
+  webview as soon as it is mapped, polls focus every 50 ms instead of 150 ms, and retries until the
+  search field is ready. AppImage cold starts no longer take 6–7 seconds to accept typing.
 
 Local clipboard history for Windows, Linux and macOS. Clipboard data never leaves your computer;
 the only network request is the update check against GitHub.
@@ -52,15 +47,10 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 
 ### Novidades
 
-- **Verificação de atualizações corrigida**: a checagem manual não depende mais do binário
-  `curl` do sistema; usa a pilha HTTP do webview, então também funciona no AppImage. As
-  Configurações verificam ao abrir e o botão **Verificar atualizações** continua disponível.
-- **Foco corrigido no AppImage**: em cold starts o campo de busca agora recebe foco de forma
-  confiável, usando o evento nativo de foco da janela e retentativas que cobrem a inicialização
-  lenta do AppImage/WebKit.
-- **Posicionamento após inatividade corrigido**: depois que o monitor acorda, o popup não aparece
-  mais na lateral esquerda; áreas úteis com tamanho zero são ignoradas e a posição centralizada é
-  reaplicada por alguns segundos.
+- **Foco na busca agora é imediato**: o popup foca a janela nativa e o webview do WebKit assim
+  que ele é mapeado, verifica o foco a cada 50 ms em vez de 150 ms e tenta novamente até o campo
+  de busca estar pronto. Cold starts do AppImage não levam mais 6–7 segundos para aceitar
+  digitação.
 
 ### Windows
 

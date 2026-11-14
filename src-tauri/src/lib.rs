@@ -169,11 +169,24 @@ pub fn run() {
             // before the first `present()` call from `popup::show`.
             #[cfg(target_os = "linux")]
             if let Some(window) = handle.get_webview_window("popup") {
+                let focus_window = window.clone();
                 if let Ok(gtk_window) = window.gtk_window() {
-                    use gtk::prelude::GtkWindowExt;
+                    use gtk::prelude::{GtkWindowExt, WidgetExt};
 
                     gtk_window.set_accept_focus(true);
                     gtk_window.set_focus_on_map(true);
+
+                    // Request focus as soon as GTK maps the window instead of waiting for the
+                    // first focus-monitor tick. This matters on slow AppImage cold starts.
+                    gtk_window.connect_map(move |window| {
+                        window.present();
+                        if let Some(gdk_window) = window.window() {
+                            gdk_window.focus(0);
+                        }
+
+                        let webview: &tauri::Webview = focus_window.as_ref();
+                        let _ = webview.set_focus();
+                    });
                 }
             }
 

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { focusSearchField, retrySearchFocus } from "./focus";
+import {
+  FOCUS_RETRY_ATTEMPTS,
+  FOCUS_RETRY_INTERVAL_MS,
+  focusSearchField,
+  retrySearchFocus,
+} from "./focus";
 
 function createField() {
   return {
@@ -51,6 +56,13 @@ describe("focusSearchField", () => {
 });
 
 describe("retrySearchFocus", () => {
+  it("polls fast enough to focus well within a second", () => {
+    expect(FOCUS_RETRY_INTERVAL_MS).toBeLessThanOrEqual(50);
+    expect(FOCUS_RETRY_ATTEMPTS * FOCUS_RETRY_INTERVAL_MS).toBeGreaterThanOrEqual(
+      10_000,
+    );
+  });
+
   it("keeps focusing until the field reports focus", () => {
     const field = createRetryField(3);
     const scheduled: Array<() => void> = [];

@@ -10,6 +10,9 @@ export type FocusableSearchField = FocusableField & {
 type FrameScheduler = (callback: () => void) => void;
 type TimeoutScheduler = (callback: () => void, delay: number) => () => void;
 
+export const FOCUS_RETRY_INTERVAL_MS = 50;
+export const FOCUS_RETRY_ATTEMPTS = 240;
+
 /**
  * Focuses and selects the search field immediately, then again on the next frame. The second
  * attempt covers the moment when the popup window finishes mapping and gains focus.
@@ -35,7 +38,7 @@ export function inputFocusTarget(input: HTMLInputElement | null): FocusableSearc
   return {
     focus: (options) => input.focus(options),
     select: () => input.select(),
-    isFocused: () => document.activeElement === input && document.hasFocus(),
+    isFocused: () => document.activeElement === input,
   };
 }
 
@@ -50,8 +53,8 @@ export function retrySearchFocus(
     const id = window.setTimeout(callback, delay);
     return () => window.clearTimeout(id);
   },
-  attempts = 120,
-  interval = 100,
+  attempts = FOCUS_RETRY_ATTEMPTS,
+  interval = FOCUS_RETRY_INTERVAL_MS,
 ): () => void {
   if (!field) return () => undefined;
 

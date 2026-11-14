@@ -5,10 +5,10 @@ use tauri::{AppHandle, Emitter, Manager};
 
 pub(crate) const BLUR_GRACE: Duration = Duration::from_millis(600);
 
-const FOCUS_CHECK_INTERVAL: Duration = Duration::from_millis(150);
-// AppImage cold starts can take several seconds to map and focus the window. Keep retrying
-// longer than the old 4.5s window so the first open still receives keyboard focus.
-const FOCUS_GIVE_UP_TICKS: u32 = 80;
+// Poll fast enough that focus lands in well under a second once the window is able to take it.
+// Keep the total window long enough for AppImage/WebKit cold starts too.
+const FOCUS_CHECK_INTERVAL: Duration = Duration::from_millis(50);
+const FOCUS_GIVE_UP_TICKS: u32 = 240;
 
 /// Returns true when a focus-loss event should hide the popup.
 ///
@@ -430,6 +430,11 @@ fn focus_popup(app: &AppHandle, window: &tauri::WebviewWindow) {
                     gtk_window.set_focus_on_map(true);
                     gtk_window.present();
                     force_x11_focus(&window);
+
+                    // Focusing the native window is not enough on WebKitGTK: the webview
+                    // widget must also receive focus before keyboard events reach the input.
+                    let webview: &tauri::Webview = window.as_ref();
+                    let _ = webview.set_focus();
                 }
                 Err(error) => {
                     #[cfg(debug_assertions)]
@@ -443,6 +448,8 @@ fn focus_popup(app: &AppHandle, window: &tauri::WebviewWindow) {
     {
         let _ = app;
         let _ = window.set_focus();
+        let webview: &tauri::Webview = window.as_ref();
+        let _ = webview.set_focus();
     }
 }
 
@@ -798,6 +805,14 @@ mod tests {
         assert!(
             total >= Duration::from_secs(10),
             "focus retries should last at least 10s, got {total:?}"
+        );
+    }
+
+    #[test]
+    fn focus_polling_is_fast_enough() {
+        assert!(
+            FOCUS_CHECK_INTERVAL <= Duration::from_millis(50),
+            "focus should be polled at least every 50ms, got {FOCUS_CHECK_INTERVAL:?}"
         );
     }
 }
