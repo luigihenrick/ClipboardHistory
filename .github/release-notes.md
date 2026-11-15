@@ -6,6 +6,9 @@
 - **Quality and test coverage**: added Rust tests for diagnostics, logging and update payloads,
   formatting/clippy checks, an AppImage smoke test in CI, and release asset verification before
   publishing.
+- **Release pipeline fixed**: the AppImage smoke test now finds the bundle under
+  `src-tauri/target/release/bundle`, and the release workflow verifies all required installers
+  before publishing.
 
 Local clipboard history for Windows, Linux and macOS. Clipboard data never leaves your computer;
 the only network request is the update check against GitHub.
@@ -57,6 +60,9 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 - **Qualidade e cobertura de testes**: adicionados testes Rust para diagnóstico, logging e payload
   de atualização, verificação de formatação/clippy, teste de fumaça do AppImage no CI e validação
   dos assets antes de publicar.
+- **Pipeline de release corrigido**: o teste de fumaça do AppImage agora encontra o bundle em
+  `src-tauri/target/release/bundle`, e o workflow valida todos os instaladores necessários antes
+  de publicar.
 
 ### Windows
 
