@@ -244,6 +244,17 @@ export default function Settings() {
     }
   };
 
+  const openRelease = async () => {
+    if (!updateInfo) return;
+
+    try {
+      await api.openExternal(updateInfo.url);
+    } catch (error) {
+      console.error("cliphistory: failed to open release page", error);
+      setStatus({ kind: "error", message: t("settings.updateOpenFailed") });
+    }
+  };
+
   const clear = async () => {
     if (!confirmClear) {
       setConfirmClear(true);
@@ -360,7 +371,13 @@ export default function Settings() {
                         onClick={(event) => {
                           event.preventDefault();
                           if (href?.startsWith("https://")) {
-                            void api.openExternal(href);
+                            void api.openExternal(href).catch((error) => {
+                              console.error("cliphistory: failed to open release link", error);
+                              setStatus({
+                                kind: "error",
+                                message: t("settings.updateOpenFailed"),
+                              });
+                            });
                           }
                         }}
                       >
@@ -390,7 +407,7 @@ export default function Settings() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => void api.openExternal(updateInfo.url)}
+                onClick={() => void openRelease()}
               >
                 {t("settings.updateOpen")}
               </button>

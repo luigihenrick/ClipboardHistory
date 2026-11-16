@@ -1,4 +1,10 @@
+#[cfg(target_os = "linux")]
+use std::path::PathBuf;
+#[cfg(target_os = "linux")]
+use std::process::Command;
 use std::str::FromStr;
+#[cfg(target_os = "linux")]
+use std::time::Duration;
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -120,7 +126,93 @@ pub fn open_external_url(url: String) -> Result<(), String> {
         return Err("Only HTTPS links can be opened.".to_string());
     }
 
-    open::that(url).map_err(|error| error.to_string())
+    #[cfg(target_os = "linux")]
+    {
+        open_external_url_linux(&url).map_err(|error| {
+            crate::logging::error(&error);
+            error
+        })
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        open::that(url).map_err(|error| error.to_string())
+    }
+}
+
+/// Opens a URL with the host desktop opener.
+///
+/// AppImages export bundled `LD_LIBRARY_PATH`/GTK/GIO variables. Passing those to `xdg-open`
+/// can make it load AppImage libraries instead of the host's and fail silently. Try the common
+/// host launchers with a clean environment so release links also work from the AppImage.
+#[cfg(target_os = "linux")]
+fn open_external_url_linux(url: &str) -> Result<(), String> {
+    const CANDIDATES: [(&str, &[&str]); 6] = [
+        ("xdg-open", &[]),
+        ("gio", &["open"]),
+        ("kde-open6", &[]),
+        ("kde-open5", &[]),
+        ("gnome-open", &[]),
+        ("kde-open", &[]),
+    ];
+
+    let mut errors = Vec::new();
+    for (program, args) in CANDIDATES {
+        let command_path = ["/usr/bin", "/usr/local/bin", "/bin"]
+            .iter()
+            .map(|directory| PathBuf::from(directory).join(program))
+            .find(|path| path.is_file())
+            .unwrap_or_else(|| PathBuf::from(program));
+
+        let mut command = Command::new(&command_path);
+        command
+            .args(args.iter().copied())
+            .arg(url)
+            .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+            .env("XDG_DATA_DIRS", "/usr/local/share:/usr/share")
+            .env_remove("LD_LIBRARY_PATH")
+            .env_remove("LD_PRELOAD")
+            .env_remove("APPDIR")
+            .env_remove("APPIMAGE")
+            .env_remove("ARGV0")
+            .env_remove("OWD")
+            .env_remove("GDK_BACKEND")
+            .env_remove("GDK_PIXBUF_MODULE_FILE")
+            .env_remove("GDK_PIXBUF_MODULEDIR")
+            .env_remove("GIO_EXTRA_MODULES")
+            .env_remove("GIO_MODULE_DIR")
+            .env_remove("GI_TYPELIB_PATH")
+            .env_remove("GSETTINGS_SCHEMA_DIR")
+            .env_remove("GTK_DATA_PREFIX")
+            .env_remove("GTK_IM_MODULE_FILE")
+            .env_remove("GTK_THEME")
+            .env_remove("GTK_PATH")
+            .env_remove("GTK_MODULES")
+            .env_remove("WEBKIT_DISABLE_COMPOSITING_MODE");
+
+        match command.spawn() {
+            Ok(mut child) => {
+                // Give fast failures (missing/incompatible host launcher) a chance to fall
+                // through, while not waiting for browsers that stay attached to xdg-open.
+                std::thread::sleep(Duration::from_millis(120));
+                match child.try_wait() {
+                    Ok(Some(status)) if !status.success() => {
+                        errors.push(format!("{program} exited with {status}"));
+                    }
+                    _ => {
+                        crate::logging::info(&format!("opened external URL with {program}"));
+                        return Ok(());
+                    }
+                }
+            }
+            Err(error) => errors.push(format!("{}: {error}", command_path.display())),
+        }
+    }
+
+    Err(format!(
+        "Could not open the release page: {}",
+        errors.join("; ")
+    ))
 }
 
 #[tauri::command]

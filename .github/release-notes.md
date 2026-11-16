@@ -1,5 +1,8 @@
 ### What's new
 
+- **Release page link fixed**: opening the GitHub release from Settings now works from the AppImage.
+  The opener uses the host desktop tools with a clean environment and reports failures instead of
+  failing silently.
 - **Diagnostics panel**: Settings now includes system, monitor, database, update and popup-focus
   information, plus recent logs that can be copied or opened directly. Focus timings show how long
   the window, webview and search field take to become ready.
@@ -53,6 +56,9 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 
 ### Novidades
 
+- **Link do release corrigido**: abrir o release no GitHub pelas Configurações agora funciona no
+  AppImage. O opener usa as ferramentas do sistema com um ambiente limpo e reporta falhas em vez
+  de falhar silenciosamente.
 - **Painel de diagnóstico**: as Configurações agora incluem informações do sistema, monitores,
   banco, atualização e tempos de foco do popup, além de logs recentes que podem ser copiados ou
   abertos diretamente. Os tempos mostram quanto a janela, o webview e o campo de busca levam para
