@@ -1,12 +1,15 @@
 ### What's new
 
+- **History limit fixed**: the popup now lists every retained entry instead of stopping at 100, so
+  increasing the items limit works as expected. Added backend and frontend regression tests for
+  limits above 100.
 - **Much broader frontend test suite**: the suite now has 94 tests covering the popup, settings,
   hotkey recorder, icons, i18n, IPC, preview backend, focus scheduling, formatting, shortcuts and
   update payload validation.
 - **Coverage gates in CI**: the release workflow now enforces at least 90% statements, lines and
   functions (and 80% branches) and publishes the HTML coverage report as a build artifact.
-- **No user-facing behavior changes**: this release focuses on reliability and regression
-  protection.
+- **Reliability release**: combines the history-limit fix with the expanded test suite and
+  coverage gates.
 
 Local clipboard history for Windows, Linux and macOS. Clipboard data never leaves your computer;
 the only network request is the update check against GitHub.
@@ -51,13 +54,16 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 
 ### Novidades
 
+- **Limite do histórico corrigido**: o popup agora lista todas as entradas retidas em vez de parar
+  em 100, então aumentar o limite de itens funciona como esperado. Foram adicionados testes de
+  regressão no backend e no frontend para limites acima de 100.
 - **Suíte de testes do frontend muito maior**: agora são 94 testes cobrindo popup, configurações,
   gravador de atalhos, ícones, i18n, IPC, backend de preview, agendamento de foco, formatação,
   atalhos e validação de payloads de atualização.
 - **Limites de cobertura no CI**: o workflow de release agora exige pelo menos 90% de statements,
   linhas e funções (e 80% de branches) e publica o relatório HTML de cobertura como artifact.
-- **Sem mudanças de comportamento visível**: esta release foca em confiabilidade e proteção contra
-  regressões.
+- **Release de confiabilidade**: combina a correção do limite do histórico com a suíte de testes
+  ampliada e os gates de cobertura.
 
 ### Windows
 

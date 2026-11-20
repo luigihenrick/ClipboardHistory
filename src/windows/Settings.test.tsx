@@ -150,6 +150,24 @@ describe("Settings", () => {
     expect(screen.getByText("Ctrl + Shift + V")).toBeInTheDocument();
   });
 
+  it("saves a history limit above the old 100-item display cap", async () => {
+    renderSettings();
+    await screen.findByRole("button", { name: "Save changes" });
+
+    const slider = screen.getByRole("slider", {
+      name: "Maximum number of items in history",
+    });
+    fireEvent.change(slider, { target: { value: "300" } });
+    expect(screen.getByText("300")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() =>
+      expect(api.saveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ maxItems: 300 }),
+      ),
+    );
+  });
+
   it("changes language and saves settings", async () => {
     renderSettings();
     await screen.findByRole("button", { name: "Save changes" });

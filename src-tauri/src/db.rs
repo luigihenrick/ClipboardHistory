@@ -11,9 +11,6 @@ use tauri::{AppHandle, Manager};
 
 use crate::models::{Entry, Stats};
 
-/// Number of entries returned to the popup. The popup only shows a small window of rows;
-/// fetching hundreds of entries makes the initial IPC serialization and React render slower.
-const LIST_LIMIT: usize = 100;
 /// Enough text for the two-line preview; the full clipboard text stays in SQLite.
 const PREVIEW_CHARS: usize = 300;
 /// Small enough to keep the popup payload light while remaining legible on HiDPI screens.
@@ -280,8 +277,10 @@ impl Db {
         Ok(updated)
     }
 
-    /// Lists entries, newest first, with pinned entries on top.
+    /// Lists every retained entry, newest first.
     ///
+    /// The database already enforces the configured retention limit, so applying a fixed display
+    /// limit here would silently hide entries when the user increases that setting.
     /// Text is truncated to a display-friendly preview; the full content stays in the database.
     pub fn list(&self, search: Option<&str>) -> Result<Vec<Entry>, String> {
         let conn = self.lock()?;
@@ -294,10 +293,7 @@ impl Db {
 
         let mut entries: Vec<Entry> = match term {
             Some(query) => {
-                let sql = format!(
-                    "{base} WHERE content LIKE ?1 ESCAPE '\\'
-                     {LIST_ORDER} LIMIT {LIST_LIMIT}"
-                );
+                let sql = format!("{base} WHERE content LIKE ?1 ESCAPE '\\' {LIST_ORDER}");
                 let mut stmt = conn.prepare(&sql).map_err(db_err)?;
                 let rows = stmt
                     .query_map(params![like_pattern(query)], |row| map_entry(row))
@@ -305,7 +301,7 @@ impl Db {
                 rows.collect::<rusqlite::Result<Vec<_>>>().map_err(db_err)?
             }
             None => {
-                let sql = format!("{base} {LIST_ORDER} LIMIT {LIST_LIMIT}");
+                let sql = format!("{base} {LIST_ORDER}");
                 let mut stmt = conn.prepare(&sql).map_err(db_err)?;
                 let rows = stmt.query_map([], |row| map_entry(row)).map_err(db_err)?;
                 rows.collect::<rusqlite::Result<Vec<_>>>().map_err(db_err)?
@@ -570,8 +566,10 @@ fn write_png(path: &Path, rgba: &[u8], width: u32, height: u32) -> Result<(), St
 
 #[cfg(test)]
 mod tests {
-    use super::LIST_ORDER;
+    use super::{Db, LIST_ORDER};
     use rusqlite::Connection;
+    use std::path::PathBuf;
+    use std::sync::Mutex;
 
     fn ordered_ids(conn: &Connection) -> Vec<i64> {
         let mut stmt = conn
@@ -608,5 +606,61 @@ mod tests {
         conn.execute("UPDATE entries SET last_used_at = 999 WHERE id = 1", [])
             .unwrap();
         assert_eq!(ordered_ids(&conn), vec![1, 3, 4, 2]);
+    }
+
+    fn db_with_text_entries(count: usize) -> Db {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE entries (
+                 id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                 kind         TEXT    NOT NULL,
+                 content      TEXT,
+                 image_path   TEXT,
+                 thumb        BLOB,
+                 img_w        INTEGER,
+                 img_h        INTEGER,
+                 hash         TEXT    NOT NULL,
+                 pinned       INTEGER NOT NULL DEFAULT 0,
+                 created_at   INTEGER NOT NULL,
+                 last_used_at INTEGER NOT NULL
+             );",
+        )
+        .unwrap();
+
+        for index in 0..count {
+            conn.execute(
+                "INSERT INTO entries
+                    (kind, content, hash, pinned, created_at, last_used_at)
+                 VALUES ('text', ?1, ?2, 0, ?3, ?3)",
+                rusqlite::params![
+                    format!("entry-{index}"),
+                    format!("hash-{index}"),
+                    index as i64
+                ],
+            )
+            .unwrap();
+        }
+
+        Db {
+            conn: Mutex::new(conn),
+            images_dir: PathBuf::from("/tmp"),
+        }
+    }
+
+    #[test]
+    fn lists_every_retained_entry_above_one_hundred() {
+        let db = db_with_text_entries(150);
+
+        let entries = db.list(None).unwrap();
+        assert_eq!(entries.len(), 150);
+        assert!(entries.iter().all(|entry| entry.kind == "text"));
+    }
+
+    #[test]
+    fn applies_a_configured_retention_limit_above_one_hundred() {
+        let db = db_with_text_entries(150);
+
+        db.prune_now(120).unwrap();
+        assert_eq!(db.list(None).unwrap().len(), 120);
     }
 }

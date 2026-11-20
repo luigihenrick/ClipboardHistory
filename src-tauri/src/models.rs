@@ -101,6 +101,38 @@ mod tests {
 
         assert_eq!(settings.sanitize().language, "en");
     }
+
+    #[test]
+    fn sanitize_preserves_a_larger_history_limit() {
+        let settings = Settings {
+            max_items: 500,
+            ..Settings::default()
+        };
+
+        assert_eq!(settings.sanitize().max_items, 500);
+    }
+
+    #[test]
+    fn sanitize_clamps_extreme_history_limits() {
+        assert_eq!(
+            Settings {
+                max_items: 1,
+                ..Settings::default()
+            }
+            .sanitize()
+            .max_items,
+            MIN_MAX_ITEMS
+        );
+        assert_eq!(
+            Settings {
+                max_items: usize::MAX,
+                ..Settings::default()
+            }
+            .sanitize()
+            .max_items,
+            MAX_MAX_ITEMS
+        );
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
