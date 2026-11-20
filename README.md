@@ -173,8 +173,13 @@ This mode only exists in development (`import.meta.env.DEV`) and is not part of 
 
 ```bash
 npm test                                          # frontend (Vitest)
+npm run test:coverage                             # frontend + coverage gates
 cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 ```
+
+The frontend coverage gate requires at least **90% statements/lines/functions** and **80%
+branches**; the branch target stays lower because the large Tauri-bound screens include many
+platform-specific UI paths.
 
 The suite covers the translation dictionaries (key/placeholder parity), date formatting, shortcut
 parsing/formatting, the focus-retry policy, blur/hide decisions, `--toggle` routing, popup

@@ -1,17 +1,12 @@
 ### What's new
 
-- **Release page link fixed**: opening the GitHub release from Settings now works from the AppImage.
-  The opener uses the host desktop tools with a clean environment and reports failures instead of
-  failing silently.
-- **Diagnostics panel**: Settings now includes system, monitor, database, update and popup-focus
-  information, plus recent logs that can be copied or opened directly. Focus timings show how long
-  the window, webview and search field take to become ready.
-- **Quality and test coverage**: added Rust tests for diagnostics, logging and update payloads,
-  formatting/clippy checks, an AppImage smoke test in CI, and release asset verification before
-  publishing.
-- **Release pipeline fixed**: the AppImage smoke test now finds the bundle under
-  `src-tauri/target/release/bundle`, and the release workflow verifies all required installers
-  before publishing.
+- **Much broader frontend test suite**: the suite now has 94 tests covering the popup, settings,
+  hotkey recorder, icons, i18n, IPC, preview backend, focus scheduling, formatting, shortcuts and
+  update payload validation.
+- **Coverage gates in CI**: the release workflow now enforces at least 90% statements, lines and
+  functions (and 80% branches) and publishes the HTML coverage report as a build artifact.
+- **No user-facing behavior changes**: this release focuses on reliability and regression
+  protection.
 
 Local clipboard history for Windows, Linux and macOS. Clipboard data never leaves your computer;
 the only network request is the update check against GitHub.
@@ -56,19 +51,13 @@ xattr -dr com.apple.quarantine /Applications/ClipHistory.app
 
 ### Novidades
 
-- **Link do release corrigido**: abrir o release no GitHub pelas Configurações agora funciona no
-  AppImage. O opener usa as ferramentas do sistema com um ambiente limpo e reporta falhas em vez
-  de falhar silenciosamente.
-- **Painel de diagnóstico**: as Configurações agora incluem informações do sistema, monitores,
-  banco, atualização e tempos de foco do popup, além de logs recentes que podem ser copiados ou
-  abertos diretamente. Os tempos mostram quanto a janela, o webview e o campo de busca levam para
-  ficar prontos.
-- **Qualidade e cobertura de testes**: adicionados testes Rust para diagnóstico, logging e payload
-  de atualização, verificação de formatação/clippy, teste de fumaça do AppImage no CI e validação
-  dos assets antes de publicar.
-- **Pipeline de release corrigido**: o teste de fumaça do AppImage agora encontra o bundle em
-  `src-tauri/target/release/bundle`, e o workflow valida todos os instaladores necessários antes
-  de publicar.
+- **Suíte de testes do frontend muito maior**: agora são 94 testes cobrindo popup, configurações,
+  gravador de atalhos, ícones, i18n, IPC, backend de preview, agendamento de foco, formatação,
+  atalhos e validação de payloads de atualização.
+- **Limites de cobertura no CI**: o workflow de release agora exige pelo menos 90% de statements,
+  linhas e funções (e 80% de branches) e publica o relatório HTML de cobertura como artifact.
+- **Sem mudanças de comportamento visível**: esta release foca em confiabilidade e proteção contra
+  regressões.
 
 ### Windows
 

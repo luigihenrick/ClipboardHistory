@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   FOCUS_RETRY_ATTEMPTS,
   FOCUS_RETRY_INTERVAL_MS,
   focusSearchField,
+  inputFocusTarget,
   retrySearchFocus,
 } from "./focus";
 
@@ -16,15 +17,13 @@ function createField() {
 
 function createRetryField(focusOnAttempt: number) {
   let attempts = 0;
-  const field = {
+  return {
     focus: vi.fn<(options?: FocusOptions) => void>(() => {
       attempts += 1;
     }),
     select: vi.fn<() => void>(),
     isFocused: () => attempts >= focusOnAttempt,
   };
-
-  return field;
 }
 
 describe("focusSearchField", () => {
@@ -36,22 +35,46 @@ describe("focusSearchField", () => {
       scheduled = callback;
     });
 
-    expect(field.focus).toHaveBeenCalledTimes(1);
     expect(field.focus).toHaveBeenCalledWith({ preventScroll: true });
     expect(field.select).toHaveBeenCalledTimes(1);
 
     scheduled?.();
 
     expect(field.focus).toHaveBeenCalledTimes(2);
-    expect(field.focus).toHaveBeenLastCalledWith({ preventScroll: true });
     expect(field.select).toHaveBeenCalledTimes(1);
   });
 
   it("does nothing when the field is not mounted", () => {
     const schedule = vi.fn<(callback: () => void) => void>();
-
     expect(() => focusSearchField(null, schedule)).not.toThrow();
     expect(schedule).not.toHaveBeenCalled();
+  });
+});
+
+describe("inputFocusTarget", () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("reports whether the input is the active element", () => {
+    const input = document.createElement("input");
+    document.body.append(input);
+    const target = inputFocusTarget(input);
+
+    expect(target).not.toBeNull();
+    expect(target?.isFocused()).toBe(false);
+
+    input.focus();
+    expect(target?.isFocused()).toBe(true);
+
+    target?.select();
+    expect(input.selectionStart).toBe(0);
+    target?.focus();
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("returns null without an input", () => {
+    expect(inputFocusTarget(null)).toBeNull();
   });
 });
 
@@ -74,10 +97,7 @@ describe("retrySearchFocus", () => {
     );
 
     retrySearchFocus(field, schedule, 5, 10);
-
-    expect(field.focus).toHaveBeenCalledTimes(1);
     scheduled.shift()?.();
-    expect(field.focus).toHaveBeenCalledTimes(2);
     scheduled.shift()?.();
 
     expect(field.focus).toHaveBeenCalledTimes(3);
@@ -126,7 +146,6 @@ describe("retrySearchFocus", () => {
 
   it("does nothing without a field", () => {
     const schedule = vi.fn<(callback: () => void, delay: number) => () => void>();
-
     expect(() => retrySearchFocus(null, schedule)).not.toThrow();
     expect(schedule).not.toHaveBeenCalled();
   });

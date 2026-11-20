@@ -176,8 +176,13 @@ Esse modo existe apenas em desenvolvimento (`import.meta.env.DEV`) e não entra 
 
 ```bash
 npm test                                          # frontend (Vitest)
+npm run test:coverage                             # frontend + limites de cobertura
 cargo test --manifest-path src-tauri/Cargo.toml   # backend (Rust)
 ```
+
+O gate de cobertura do frontend exige pelo menos **90% de statements/linhas/funções** e **80% de
+branches**; o alvo de branches fica menor porque as telas grandes ligadas ao Tauri têm muitos
+caminhos específicos de plataforma.
 
 A suíte cobre os dicionários de tradução (paridade de chaves/placeholders), formatação de datas,
 parsing/formatação de atalhos, a política de retentativa de foco, decisões de blur/foco, o
